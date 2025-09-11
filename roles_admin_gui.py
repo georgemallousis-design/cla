@@ -267,7 +267,7 @@ class RolesAdminFrame:
         # Configure tag colors
         self.users_tree.tag_configure('admin1', foreground=theme_manager.theme.COLORS['fg_error'])
         self.users_tree.tag_configure('admin2', foreground=theme_manager.theme.COLORS['fg_warning'])
-        self.users_tree.tag_configure('admin3', foreground=theme_manager.theme.COLORS['fg_accent'])
+        self.users_tree.tag_configure('admin3', foreground=theme_manager.theme.COLORS['fg_secondary'])
 
     def _on_user_selection(self, event):
         """Handle user selection."""
