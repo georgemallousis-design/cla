@@ -20,21 +20,20 @@ class UltraDarkTheme:
         'bg_secondary': '#141414',  # Slightly lighter for panels
         'bg_tertiary': '#1a1a1a',  # Input fields background
         'bg_accent': '#242424',  # Accent/hover states
-        'bg_selected': '#1e3a5f',  # Selected items (dark blue)
-        'bg_button': '#1f1f1f',  # Button background
-        'bg_button_hover': '#2a2a2a',  # Button hover
-        'bg_button_active': '#1e3a5f',  # Active button (dark blue)
+        'bg_selected': '#555555',  # Selected items (medium gray)
+        'bg_button': '#333333',  # Button background
+        'bg_button_hover': '#444444',  # Button hover
+        'bg_button_active': '#555555',  # Active button (light gray)
 
-        'fg_primary': '#b8b8b8',  # Primary text (light gray)
-        'fg_secondary': '#808080',  # Secondary text (medium gray)
+        'fg_primary': '#ffffff',  # Primary text (white)
+        'fg_secondary': '#cccccc',  # Secondary text (light gray)
         'fg_disabled': '#404040',  # Disabled text (dark gray)
-        'fg_accent': '#4a7c9e',  # Accent text (muted blue)
         'fg_error': '#c95555',  # Error text (muted red)
         'fg_success': '#55a855',  # Success text (muted green)
         'fg_warning': '#c9a955',  # Warning text (muted yellow)
 
         'border': '#2a2a2a',  # Border color
-        'border_focus': '#3a5a7a',  # Focused border (dark blue)
+        'border_focus': '#666666',  # Focused border (gray)
         'shadow': '#000000',  # Pure black shadow
     }
 
@@ -246,7 +245,7 @@ class ThemeManager:
 
             self.style.map('Dark.TRadiobutton',
                            background=[('active', self.theme.COLORS['bg_primary'])],
-                           foreground=[('active', self.theme.COLORS['fg_accent'])])
+                           foreground=[('active', self.theme.COLORS['fg_primary'])])
 
             # Checkbutton styles
             self.style.configure('Dark.TCheckbutton',

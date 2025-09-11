@@ -500,7 +500,7 @@ class MaterialManagementFrame:
         price_label = theme_manager.create_styled_label(
             info_frame, f"€{price:.2f}", 'Subheading.TLabel'
         )
-        price_label.configure(foreground=theme_manager.theme.COLORS['fg_accent'])
+        price_label.configure(foreground=theme_manager.theme.COLORS['fg_primary'])
         price_label.pack(anchor='w', pady=(5, 0))
 
         # Stock info
