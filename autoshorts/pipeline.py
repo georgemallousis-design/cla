@@ -383,7 +383,7 @@ def make_video(
             ass_path = build_captions(cfg, narration, script, folder / "captions.ass")
 
         with stage("Background visuals"):
-            shots = plan_shots(cfg, narration, work, topic=topic)
+            shots = plan_shots(cfg, narration, work, topic=script.topic or topic)  # what the video is about
             job.clips = unique_clips(shots)
 
         with stage("Render"):

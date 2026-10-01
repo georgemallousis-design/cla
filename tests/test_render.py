@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import shutil
 import subprocess
 from pathlib import Path, PureWindowsPath
@@ -86,6 +87,13 @@ def frame_brightness(video: Path, at: float) -> float:
     return sum(raw) / len(raw)
 
 
+def integrated_loudness(path: Path) -> float:
+    """EBU R128 integrated loudness (LUFS) of a file's audio."""
+    proc = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", str(path), "-af", "ebur128", "-f", "null", "-"],
+                          capture_output=True, text=True, timeout=60)
+    return float(re.findall(r"I:\s+(-?[\d.]+) LUFS", proc.stderr)[-1])
+
+
 def system_font() -> Path | None:
     for candidate in (
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
@@ -135,9 +143,23 @@ def narration_for(media: dict[str, Path]) -> Narration:
 
 def test_video_duration_adds_tail_and_caps():
     cfg = Config()
-    assert video_duration(cfg, 60.0) == pytest.approx(60.0 + TAIL_SECONDS)
+    assert video_duration(cfg, 45.0) == pytest.approx(45.0 + TAIL_SECONDS)
+    assert video_duration(cfg, 70.0) == pytest.approx(70.0 + TAIL_SECONDS)
     cfg.video.max_seconds = 30
     assert video_duration(cfg, 60.0) == 30.0
+
+
+def test_video_duration_reaches_one_minute_when_aimed_for():
+    cfg = Config()  # target_seconds 65: the user wants videos over one minute
+    assert video_duration(cfg, 59.0) == render.MONETIZE_SECONDS
+    assert video_duration(cfg, 60.0) == render.MONETIZE_SECONDS
+    assert video_duration(cfg, 61.0) == pytest.approx(61.0 + TAIL_SECONDS)  # already long enough
+    short = render.MONETIZE_SECONDS - render.MAX_OUTRO_PAD - TAIL_SECONDS - 0.5
+    assert video_duration(cfg, short) == pytest.approx(short + TAIL_SECONDS)  # too short to pad
+    cfg.video.target_seconds = 45  # short-form target: never padded
+    assert video_duration(cfg, 59.0) == pytest.approx(59.0 + TAIL_SECONDS)
+    cfg.video.target_seconds, cfg.video.max_seconds = 65, 60  # the cap still wins
+    assert video_duration(cfg, 59.0) == 60.0
 
 
 def test_shot_frames_tile_exactly_without_drift():
@@ -237,7 +259,8 @@ def test_final_video_filter_variants():
 
 def test_final_audio_filter_without_music():
     graph = final_audio_filter(3.0)
-    assert graph.startswith("[1:a:0]aformat=")
+    assert graph.startswith("[1:a:0]loudnorm=I=-14:")
+    assert graph.index("loudnorm") < graph.index("aformat=") < graph.index("apad=")  # silence padding not measured
     assert "apad=whole_dur=3.000" in graph and "alimiter=limit=0.95" in graph
     assert "[2:a" not in graph and "amix" not in graph and graph.endswith("[aout]")
 
@@ -324,6 +347,7 @@ def test_render_video_full_pipeline_with_ducked_music(media, caplog):
     assert float(video["duration"]) == pytest.approx(expected, abs=0.1)
     assert (audio["codec_name"], int(audio["sample_rate"]), audio["channels"]) == ("aac", 48000, 2)
     assert float(audio["duration"]) == pytest.approx(expected, abs=0.1)
+    assert integrated_loudness(out) == pytest.approx(-14, abs=2.5)  # voice normalised to ~-14 LUFS
     assert not out.with_name("video.part.mp4").exists()
     assert sorted(p.name for p in work.glob("shot_*.mp4")) == ["shot_000.mp4", "shot_001.mp4", "shot_002.mp4"]
     assert (work / "captions.ass").is_file() and (work / "background.mp4").is_file()

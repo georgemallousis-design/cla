@@ -295,6 +295,9 @@ voice), generated backgrounds. Each free key you add makes the videos better:
 | `PEXELS_API_KEY` / `PIXABAY_API_KEY` | real stock footage instead of abstract backgrounds |
 | tracks in `assets/music/` | background music |
 
+Without an LLM, each topic is only matched loosely to the closest of the 33 offline
+scripts (or a random one of the chosen format), and the topic still counts as used.
+
 The first video takes a few minutes on a typical laptop. Watch it, read `youtube.txt` and
 `tiktok.txt` in the job folder, then tune `config.yaml`.
 

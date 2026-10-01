@@ -256,6 +256,24 @@ def test_build_ass_short_captions_stay_on_one_line(tmp_path):
     assert "VENUS TAKES ABOUT" not in shown  # estimated wider than 85% of the frame at 88 px
 
 
+def test_title_returns_as_end_card_when_render_adds_an_outro(tmp_path):
+    from autoshorts.render import video_duration
+
+    cfg = Config()
+    cfg.captions.font = "X"
+    nar, script = make_narration("Octopuses have three hearts.")
+    nar.duration = 58.0  # target 65 s: the renderer pads this to just over a minute
+    titles = events(build_ass(cfg, nar, script, tmp_path / "c.ass").read_text(encoding="utf-8"), "Title")
+    assert [(start, end) for start, end, _ in titles] == [
+        ("0:00:00.00", "0:00:03.00"), ("0:00:58.30", ass_time(video_duration(cfg, 58.0))),
+    ]
+    assert titles[0][2] == titles[1][2]
+
+    cfg.video.target_seconds = 45  # no outro: the title shows only at the start
+    titles = events(build_ass(cfg, nar, script, tmp_path / "c.ass").read_text(encoding="utf-8"), "Title")
+    assert len(titles) == 1
+
+
 def test_build_ass_without_words_has_only_title(tmp_path):
     cfg = Config()
     cfg.captions.font = "X"

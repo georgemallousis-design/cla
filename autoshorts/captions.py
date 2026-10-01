@@ -36,6 +36,7 @@ LONG_PAUSE = 0.6  # a silence this long inside a phrase starts a new caption
 # Captions of up to this many words are kept on one line (short, punchy style); longer
 # ones may wrap to two lines.
 ONE_LINE_MAX_WORDS = 3
+OUTRO_TITLE_MIN = 1.0  # an outro at least this long shows the title again as an end card
 POP = r"\fscx80\fscy80\t(0,90,\fscx100\fscy100)"
 FADE = r"\fad(150,250)"
 
@@ -488,10 +489,10 @@ def _caption_text(texts: list[str], lines: list[list[int]], active: int, hl: str
     return "\\N".join(rendered)
 
 
-def _title_event(cfg: Config, lay: _Layout, title: str, duration: float) -> str | None:
+def _title_event(cfg: Config, lay: _Layout, title: str, start: float, end: float) -> str | None:
+    """The title banner from ``start`` to ``end`` seconds (None if empty or zero-length)."""
     title = clean_for_speech(title)
-    seconds = min(cfg.captions.title_seconds, duration) if duration > 0 else cfg.captions.title_seconds
-    if not title or seconds <= 0:
+    if not title or end - start <= 0:
         return None
     words = title.split()
     max_w = lay.width * TITLE_MAX_WIDTH
@@ -501,7 +502,23 @@ def _title_event(cfg: Config, lay: _Layout, title: str, duration: float) -> str 
     if size != lay.title_size:
         tags += f"\\fs{size}"
     text = "\\N".join(escape_ass(line) for line in lines)
-    return _dialogue(2, 0, round(seconds * 100), "Title", f"{{{tags}{FADE}}}{text}")
+    return _dialogue(2, round(start * 100), round(end * 100), "Title", f"{{{tags}{FADE}}}{text}")
+
+
+def _title_windows(cfg: Config, narration: Narration) -> list[tuple[float, float]]:
+    """When the title banner shows: the first title_seconds, and again as an end card when
+    the renderer adds an outro after the voice (see render.video_duration)."""
+    from .render import video_duration
+
+    duration = narration.duration
+    seconds = min(cfg.captions.title_seconds, duration) if duration > 0 else cfg.captions.title_seconds
+    windows = [(0.0, seconds)]
+    if duration > 0:
+        outro_start = duration + HOLD
+        total = video_duration(cfg, duration)
+        if total - outro_start >= OUTRO_TITLE_MIN:
+            windows.append((outro_start, total))
+    return windows
 
 
 def build_ass(cfg: Config, narration: Narration, script: VideoScript, out_path: Path) -> Path:
@@ -518,9 +535,10 @@ def build_ass(cfg: Config, narration: Narration, script: VideoScript, out_path: 
     )
     lines = _header(cfg, lay, script.title)
     if cc.show_title:
-        title = _title_event(cfg, lay, script.title, narration.duration)
-        if title:
-            lines.append(title)
+        for start, end in _title_windows(cfg, narration):
+            title = _title_event(cfg, lay, script.title, start, end)
+            if title:
+                lines.append(title)
     for cap in captions:
         lines.extend(_caption_events(cfg, lay, cap))
     out_path.write_text("\n".join(lines) + "\n", encoding="utf-8")

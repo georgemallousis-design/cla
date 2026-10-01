@@ -9,8 +9,9 @@ Three plain ffmpeg passes:
    different footage. Still images get a slow Ken Burns zoom. Shots render in a small
    thread pool; a clip ffmpeg cannot read becomes a plain dark shot instead of a failure.
 2. The shots are joined with the concat demuxer (``-c copy``) into ``background.mp4``.
-3. The final pass burns the ASS captions in (libass), mixes the narration with optional
-   looped, faded and ducked background music, and encodes the upload-ready MP4.
+3. The final pass burns the ASS captions in (libass), loudness-normalises the narration,
+   mixes it with optional looped, faded and ducked background music, and encodes the
+   upload-ready MP4.
 
 ffmpeg runs with ``cwd=workdir`` and filter arguments only ever name files there by bare
 relative names ("captions.ass", "fonts"), so they never contain drive letters,
@@ -33,6 +34,11 @@ from .utils import AutoShortsError, ensure_dir, log, media_duration, run_ffmpeg
 from .visuals import Shot
 
 TAIL_SECONDS = 0.4  # the video keeps running this long after the voice ends
+# TikTok's Creator Rewards only count videos longer than one minute (the reason the default
+# video.target_seconds is 65). When the target is over a minute but the voice-over ends
+# just short of it, the last shot and the music run on (a short outro) to reach this.
+MONETIZE_SECONDS = 61.0
+MAX_OUTRO_PAD = 4.0  # never add more than this; a much shorter video stays short
 FIRST_FADE_SECONDS = 0.25  # fade in from black at the very start of the video
 MUSIC_FADE_OUT = 1.5
 SHOT_PRESET = "veryfast"  # intermediates only; the final pass uses cfg.video.preset/crf
@@ -49,6 +55,11 @@ AUDIO_FORMAT = "aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=ster
 # Gentle ducking: the music drops roughly 6 dB while the voice is speaking.
 DUCK = "sidechaincompress=threshold=0.05:ratio=4:attack=20:release=350"
 LIMITER = "alimiter=limit=0.95:level=0"  # level=0: limit peaks, don't re-normalise to 0 dBFS
+# Every TTS engine speaks at its own level (espeak ends up around -21 LUFS, quiet next to
+# other Shorts). The voice is normalised to about -14 LUFS, the usual level on YouTube and
+# TikTok, before mixing, so music.volume really is "relative to the voice". loudnorm works
+# at 192 kHz internally, hence the resample back to 48 kHz.
+VOICE_LOUDNESS = "loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000"
 COLOR_ARGS = ["-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv"]
 
 
@@ -56,8 +67,15 @@ COLOR_ARGS = ["-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc",
 
 
 def video_duration(cfg: Config, narration_seconds: float) -> float:
-    """Length of the final video: narration plus a short tail, capped at cfg.video.max_seconds."""
-    return round(min(narration_seconds + TAIL_SECONDS, float(cfg.video.max_seconds)), 3)
+    """Length of the final video: narration plus a short tail, capped at cfg.video.max_seconds.
+
+    With video.target_seconds over 60, a video that would end less than MAX_OUTRO_PAD
+    seconds short of MONETIZE_SECONDS is stretched to it (see MONETIZE_SECONDS).
+    """
+    total = narration_seconds + TAIL_SECONDS
+    if cfg.video.target_seconds > 60 and MONETIZE_SECONDS - MAX_OUTRO_PAD <= total < MONETIZE_SECONDS:
+        total = MONETIZE_SECONDS
+    return round(min(total, float(cfg.video.max_seconds)), 3)
 
 
 def shot_frames(shots: Sequence[Shot], total: float, fps: int) -> list[tuple[Shot, int]]:
@@ -163,13 +181,13 @@ def final_video_filter(ass_name: str | None = SUBTITLE_NAME, fonts_dir: str | No
 def final_audio_filter(duration: float, *, music_volume: float | None = None, duck: bool = False) -> str:
     """Filter graph text producing [aout] from the narration (input 1) and music (input 2).
 
-    The narration stays at full level and is padded with silence to ``duration``. Music
+    The narration is loudness-normalised (VOICE_LOUDNESS) and padded with silence to ``duration``. Music
     (input 2, looped by ``-stream_loop -1``) is trimmed to ``duration``, set to
     ``music_volume``, optionally ducked under the voice (sidechain compression), and
     faded out at the end. ``music_volume=None`` means no music input.
     """
     d = f"{duration:.3f}"
-    voice = f"[1:a:0]{AUDIO_FORMAT},apad=whole_dur={d}"
+    voice = f"[1:a:0]{VOICE_LOUDNESS},{AUDIO_FORMAT},apad=whole_dur={d}"
     if music_volume is None:
         return f"{voice},{LIMITER}[aout]"
     fade_len = min(MUSIC_FADE_OUT, duration)
@@ -417,6 +435,9 @@ def render_video(
     ensure_dir(out_path.parent)
     tmp_out = out_path.with_name(f"{out_path.stem}.part.mp4")
     total = video_duration(cfg, narration.duration)
+    if total > narration.duration + TAIL_SECONDS + 0.01:
+        log.info("adding a %.1f s outro so the video is over one minute (TikTok Creator Rewards)",
+                 total - narration.duration)
     if narration.duration + TAIL_SECONDS > total + 0.01:  # total is rounded to milliseconds
         log.warning("narration is %.1f s; the video is capped at %.1f s (video.max_seconds)",
                     narration.duration, total)
