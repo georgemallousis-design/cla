@@ -180,11 +180,12 @@ def token_updates(payload: dict, client_key: str, client_secret: str) -> dict[st
     return updates
 
 
-def _hours(seconds: object) -> str:
+def _duration(seconds: object) -> str:
     try:
-        return f"{int(seconds) / 3600:.0f} h"  # type: ignore[arg-type]
+        hours = int(seconds) / 3600  # type: ignore[arg-type]
     except (TypeError, ValueError):
-        return "unknown"
+        return "an unknown time"
+    return f"{hours / 24:.0f} days" if hours >= 48 else f"{hours:.0f} hours"
 
 
 def _ask(prompt: str, secret: bool = False) -> str:
@@ -207,8 +208,8 @@ def _save(args: argparse.Namespace, payload: dict, client_key: str, client_secre
     update_env(args.env, updates)
     print(f"Saved {', '.join(updates)} to {args.env.resolve()}")
     print(f"  scopes granted: {payload.get('scope', '?')}")
-    print(f"  access token valid for {_hours(payload.get('expires_in'))}, "
-          f"refresh token for {_hours(payload.get('refresh_expires_in'))}")
+    print(f"  access token valid for {_duration(payload.get('expires_in'))}, "
+          f"refresh token for {_duration(payload.get('refresh_expires_in'))}")
 
 
 def cmd_authorize(args: argparse.Namespace, env: dict[str, str]) -> None:
