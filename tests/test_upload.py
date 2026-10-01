@@ -794,8 +794,45 @@ def test_tiktok_refreshes_token_on_401(monkeypatch, cfg, video, tt_env, sleeps, 
     assert os.environ["TIKTOK_ACCESS_TOKEN"] == "tok-2"
     assert os.environ[tiktok.REFRESH_TOKEN_ENV] == "ref-2"
     assert "new refresh token" in caplog.text
+    assert not (cfg.base_dir / ".env").exists()  # no .env next to the config: nothing created
     for secret in ("tok-1", "tok-2", "ref-1", "ref-2", "secret-1"):
         assert secret not in caplog.text
+
+
+def test_tiktok_refreshed_tokens_are_saved_to_env(monkeypatch, cfg, video, tt_env, sleeps, caplog) -> None:
+    """A systemd/cron run is a new process each time: a rotated refresh token that only
+    lived in os.environ would be lost, and the next run would refresh with a dead one."""
+    set_refresh_env(monkeypatch)
+    caplog.set_level(logging.DEBUG, logger="autoshorts")
+    env = cfg.base_dir / ".env"
+    env.write_text("# secrets\nPEXELS_API_KEY=px\nTIKTOK_ACCESS_TOKEN=tok-1\nTIKTOK_REFRESH_TOKEN=ref-1\n",
+                   encoding="utf-8")
+    use_session(monkeypatch, FakeSession({
+        tiktok.INBOX_INIT_URL: [api_error(401, "access_token_invalid", "expired"), INIT_OK],
+        tiktok.TOKEN_URL: [TOKEN_OK],
+        UPLOAD_URL: [FakeResp(201)],
+        tiktok.STATUS_URL: [ok({"status": "SEND_TO_USER_INBOX"})],
+    }))
+    assert tiktok.upload(cfg, video, TT_META).ok
+    text = env.read_text(encoding="utf-8")
+    assert "TIKTOK_ACCESS_TOKEN=tok-2" in text and "TIKTOK_REFRESH_TOKEN=ref-2" in text
+    assert "PEXELS_API_KEY=px" in text and text.startswith("# secrets")
+    if os.name == "posix":
+        assert env.stat().st_mode & 0o777 == 0o600
+    for secret in ("tok-2", "ref-2"):
+        assert secret not in caplog.text
+
+
+def test_tiktok_chunk_network_error_hides_upload_token(monkeypatch, cfg, video, tt_env, sleeps, caplog) -> None:
+    secret_url = "https://open-upload.tiktokapis.com/video/?upload_id=1&upload_token=SECRETUPLOADTOKEN"
+    caplog.set_level(logging.DEBUG, logger="autoshorts")
+    use_session(monkeypatch, FakeSession({
+        tiktok.INBOX_INIT_URL: [ok({"publish_id": "v_pub_1", "upload_url": secret_url})],
+        secret_url: [requests.ConnectionError(f"Max retries exceeded with url: {secret_url[38:]}")],
+    }))
+    result = tiktok.upload(cfg, video, TT_META)
+    assert not result.ok and "upload_token=***" in result.error
+    assert "SECRETUPLOADTOKEN" not in result.error and "SECRETUPLOADTOKEN" not in caplog.text
 
 
 def test_tiktok_refresh_only_once(monkeypatch, cfg, video, tt_env, sleeps) -> None:

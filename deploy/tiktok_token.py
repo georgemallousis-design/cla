@@ -21,8 +21,13 @@ Usage (run it in the folder that holds .env and config.yaml)::
     python deploy/tiktok_token.py --direct          # also video.publish (direct mode)
     python deploy/tiktok_token.py --refresh         # renew the tokens already in .env
 
-Only the Python standard library is used. Tokens are never printed unless you pass
-``--print`` (then nothing is written).
+Besides autoshorts' own .env writer (``autoshorts.utils.update_env``), only the Python
+standard library is used. Tokens are never printed unless you pass ``--print`` (then
+nothing is written).
+
+On the Ubuntu VPS (install.sh) .env belongs to the service user; run it as that user::
+
+    sudo -u autoshorts /opt/autoshorts/.venv/bin/python /opt/autoshorts/deploy/tiktok_token.py --env /opt/autoshorts/.env
 """
 from __future__ import annotations
 
@@ -32,12 +37,17 @@ import json
 import os
 import secrets
 import sys
-import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
 import webbrowser
 from pathlib import Path
+
+try:
+    from autoshorts.utils import update_env
+except ImportError:  # run from a checkout without the package installed
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    from autoshorts.utils import update_env
 
 AUTHORIZE_URL = "https://www.tiktok.com/v2/auth/authorize/"
 TOKEN_URL = "https://open.tiktokapis.com/v2/oauth/token/"
@@ -76,38 +86,6 @@ def read_env(path: Path) -> dict[str, str]:
             value = value[1:-1]
         values[key] = value
     return values
-
-
-def update_env(path: Path, updates: dict[str, str]) -> None:
-    """Set KEY=value lines in .env, keeping every other line; owner-only permissions."""
-    lines = path.read_text(encoding="utf-8-sig").splitlines() if path.is_file() else []
-    pending = dict(updates)
-    out: list[str] = []
-    for raw in lines:
-        stripped = raw.strip()
-        key = stripped.partition("=")[0].strip()
-        if key.startswith("export "):
-            key = key[len("export "):].strip()
-        if not stripped.startswith("#") and "=" in stripped and key in pending:
-            out.append(f"{key}={pending.pop(key)}")
-        else:
-            out.append(raw)
-    out.extend(f"{key}={value}" for key, value in pending.items())
-    text = "\n".join(out) + "\n"
-
-    folder = path.resolve().parent
-    fd, tmp = tempfile.mkstemp(prefix=".env.", dir=folder)
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as fh:
-            fh.write(text)
-        try:
-            os.chmod(tmp, 0o600)
-        except OSError:  # pragma: no cover - e.g. some network filesystems
-            pass
-        os.replace(tmp, path)
-    except BaseException:
-        Path(tmp).unlink(missing_ok=True)
-        raise
 
 
 # --------------------------------------------------------------------------- OAuth
@@ -275,14 +253,19 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    env = read_env(args.env)
     try:
+        env = read_env(args.env)
         if args.refresh:
             cmd_refresh(args, env)
         else:
             cmd_authorize(args, env)
     except TokenError as exc:
         print(f"error: {exc}", file=sys.stderr)
+        return 2
+    except PermissionError as exc:
+        print(f"error: {exc}\n(on the VPS run it as the service user: sudo -u autoshorts "
+              "/opt/autoshorts/.venv/bin/python deploy/tiktok_token.py --env /opt/autoshorts/.env)",
+              file=sys.stderr)
         return 2
     except (KeyboardInterrupt, EOFError):
         print("\ncancelled", file=sys.stderr)

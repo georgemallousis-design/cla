@@ -448,6 +448,28 @@ class TestOpenAICompatible:
         assert "response_format" not in session.post_calls[2]["json"]
         assert "sk-test-secret-123" not in caplog.text
 
+    def test_default_model_is_a_current_groq_model(self):
+        # llama-3.3-70b-versatile was shut down by Groq on 2026-08-16
+        assert Config().script.openai_compatible.model == "openai/gpt-oss-120b"
+
+    @pytest.mark.parametrize("status, body", [
+        (400, {"error": {"message": "The model `llama-3.3-70b-versatile` has been decommissioned and is no "
+                                    "longer supported.", "type": "invalid_request_error",
+                         "code": "model_decommissioned"}}),
+        (404, {"error": {"message": "The model `old` does not exist or you do not have access to it.",
+                         "code": "model_not_found"}}),
+    ])
+    def test_retired_model_gets_a_clear_hint(self, cfg, fake_http, status, body):
+        session = fake_http(posts=[FakeResponse(status, body)])
+        gen = OpenAICompatibleGenerator(cfg)
+        with pytest.raises(AutoShortsError) as exc:
+            gen.generate("ocean", "facts")
+        msg = str(exc.value)
+        assert "no longer available" in msg and "script.openai_compatible.model" in msg
+        assert "openai/gpt-oss-120b" in msg
+        assert len(session.post_calls) == 1  # not mistaken for a rejected JSON mode
+        assert gen.json_mode is True
+
     def test_retry_after_bad_json(self, cfg, fake_http):
         session = fake_http(posts=[openai_reply('{"title": "broken", "segments": ['), openai_reply(good_reply(cfg))])
         OpenAICompatibleGenerator(cfg).generate("ocean", "facts")
@@ -516,6 +538,21 @@ class TestOffline:
         first = gen.generate("ocean", "facts").title
         second = gen.generate("ocean", "facts").title
         assert first != second
+
+    def test_related_topics_do_not_get_the_same_script_again(self, cfg, caplog):
+        """Only one bank script is about octopuses: a second octopus topic must not turn
+        into the same video (made and uploaded twice); it gets an unrelated script instead,
+        which leaves that topic unused (pipeline.topic_matches is False)."""
+        from autoshorts.pipeline import topic_matches
+
+        gen = OfflineGenerator(cfg, rng=random.Random(0))
+        first = gen.generate("Why octopuses have three hearts", "facts")
+        assert "Octopus" in first.title
+        with caplog.at_level(logging.WARNING, logger="autoshorts"):
+            second = gen.generate("Octopus escape artists", "facts")
+        assert second.title != first.title
+        assert not topic_matches("Octopus escape artists", second)
+        assert "used recently" in caplog.text
 
     def test_corrupt_state_is_ignored(self, cfg):
         state = cfg.path("state")

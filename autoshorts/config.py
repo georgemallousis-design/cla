@@ -38,11 +38,12 @@ class OllamaConfig:
 @dataclass
 class OpenAICompatibleConfig:
     # Any OpenAI-compatible chat API with a free tier, e.g.
-    #   Groq:       https://api.groq.com/openai/v1  (llama-3.3-70b-versatile)
-    #   Gemini:     https://generativelanguage.googleapis.com/v1beta/openai  (gemini-2.0-flash)
+    #   Groq:       https://api.groq.com/openai/v1  (openai/gpt-oss-120b)
+    #   Gemini:     https://generativelanguage.googleapis.com/v1beta/openai  (a current Flash
+    #               model, see https://ai.google.dev/gemini-api/docs/models)
     #   OpenRouter: https://openrouter.ai/api/v1  (any ":free" model)
     base_url: str = "https://api.groq.com/openai/v1"
-    model: str = "llama-3.3-70b-versatile"
+    model: str = "openai/gpt-oss-120b"
     api_key_env: str = "LLM_API_KEY"
 
 
@@ -68,7 +69,7 @@ class EdgeTTSConfig:
 @dataclass
 class EspeakConfig:
     voice: str = "en-us"
-    speed: int = 165  # words per minute
+    speed: int = 150  # words per minute (slower = offline voice-overs pass 60 s)
 
 
 @dataclass
@@ -159,6 +160,16 @@ class TikTokUploadConfig:
 class UploadConfig:
     youtube: YouTubeUploadConfig = field(default_factory=YouTubeUploadConfig)
     tiktok: TikTokUploadConfig = field(default_factory=TikTokUploadConfig)
+    # In script.provider auto, a failing LLM (quota, outage) silently falls back to the
+    # small offline bank; such videos are rendered but not uploaded unless this is true.
+    upload_offline_fallback: bool = False
+
+
+@dataclass
+class RetentionConfig:
+    # Keeps an unattended server's disk from filling up (see autoshorts/retention.py).
+    cache_max_mb: int = 5000  # cache_dir (stock clips, generated backgrounds) is trimmed to this, oldest first
+    output_keep_days: int = 0  # >0: delete video.mp4/thumbnail.jpg of jobs older than this; 0 keeps all
 
 
 @dataclass
@@ -182,6 +193,7 @@ class Config:
     metadata: MetadataConfig = field(default_factory=MetadataConfig)
     upload: UploadConfig = field(default_factory=UploadConfig)
     topics: TopicsConfig = field(default_factory=TopicsConfig)
+    retention: RetentionConfig = field(default_factory=RetentionConfig)
 
     # Directory that relative paths in the config resolve against.
     base_dir: Path = field(default_factory=Path.cwd, repr=False)
@@ -232,7 +244,16 @@ def load_config(path: str | Path | None = None) -> Config:
     cfg_path = Path(path) if path else Path("config.yaml")
     base_dir = cfg_path.resolve().parent if cfg_path.exists() else Path.cwd()
     if load_dotenv is not None:
-        load_dotenv(base_dir / ".env", override=False)
+        env_file = base_dir / ".env"
+        try:
+            # utf-8-sig: PowerShell 5.1's "Set-Content -Encoding UTF8" / Notepad write a BOM,
+            # which would otherwise become part of the first key's name.
+            load_dotenv(env_file, override=False, encoding="utf-8-sig")
+        except UnicodeDecodeError as exc:
+            raise ValueError(
+                f"{env_file} is not UTF-8 text (PowerShell 5.1's '>' writes UTF-16); re-save it as UTF-8, "
+                "e.g. in Notepad: File > Save as > Encoding UTF-8"
+            ) from exc
 
     data: dict[str, Any] = {}
     if cfg_path.exists():

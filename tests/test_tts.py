@@ -538,3 +538,15 @@ def test_narration_handles_empty_segments_and_emoji(fake_engines, tmp_path):
     assert [t for _, t in FakeEngine.log] == ["one two", "three four"]
     with pytest.raises(AutoShortsError, match="no text"):
         synthesize_narration(cfg, make_script("✨"), tmp_path)
+
+
+def test_display_tokens_split_unspaced_scripts():
+    from autoshorts.tts.timing import SCRIPT_CHUNK_CHARS, display_tokens
+
+    zh = display_tokens("章鱼有三颗心脏，它们的血液是蓝色的。")
+    assert zh[1].endswith("，") or any(t.endswith("，") for t in zh)
+    assert all(len(t) <= SCRIPT_CHUNK_CHARS + 1 for t in zh)
+    th = display_tokens("ปลาหมึกยักษ์มีหัวใจสามดวงและเลือดสีฟ้า")
+    assert len(th) > 1 and "".join(th) == "ปลาหมึกยักษ์มีหัวใจสามดวงและเลือดสีฟ้า"
+    assert all(not ("ะ" <= t[0] <= "ฺ" or "็" <= t[0] <= "๎") for t in th)  # no orphan marks
+    assert display_tokens("Hello world, 東京 is big.") == ["Hello", "world,", "東京", "is", "big."]

@@ -485,3 +485,52 @@ def test_to_jsonable_makes_paths_relative(tmp_path):
     assert data["clips"][0]["path"] == "work/c.mp4"
     assert data["clips"][1]["path"] == str(Path("/somewhere/else.mp4"))
     json.dumps(data)
+
+
+# --------------------------------------------------------------------------- offline fallback / housekeeping
+
+
+def bank_script(fakes: Fakes) -> None:
+    """generate_script returns a script straight from the offline content bank."""
+    from autoshorts.script.offline import load_bank
+
+    entry = next(e for e in load_bank() if e["format"] == "facts")
+
+    def generate_script(cfg, topic, fmt):
+        fakes.calls.append("script")
+        return VideoScript(topic=topic, format="facts", title=entry["title"],
+                           segments=[Segment(text=s["text"], visual_query=s["visual_query"]) for s in entry["segments"]],
+                           description=entry["description"], hashtags=list(entry["hashtags"]))
+
+    fakes.generate_script = generate_script
+
+
+def test_offline_fallback_scripts_are_rendered_but_not_uploaded(cfg, fakes, monkeypatch, caplog):
+    bank_script(fakes)
+    fakes.install(monkeypatch)
+    cfg.script.provider = "auto"
+    with caplog.at_level("WARNING", logger="autoshorts"):
+        job = pipeline.make_video(cfg, topic="Anything", upload_to=("youtube", "tiktok"))
+    assert job.render is not None and job.uploads == []
+    assert not any(c.startswith("upload:") for c in fakes.calls)
+    assert "not uploading" in caplog.text and "autoshorts upload" in caplog.text
+
+    cfg.upload.upload_offline_fallback = True
+    job = pipeline.make_video(cfg, topic="Anything else", upload_to=("youtube",))
+    assert [u.platform for u in job.uploads] == ["youtube"]
+
+    cfg.upload.upload_offline_fallback, cfg.script.provider = False, "offline"  # chosen on purpose
+    job = pipeline.make_video(cfg, topic="Third", upload_to=("youtube",))
+    assert [u.platform for u in job.uploads] == ["youtube"]
+
+
+def test_llm_scripts_are_uploaded(cfg, fakes):
+    job = pipeline.make_video(cfg, topic="LLM topic", upload_to=("youtube",))
+    assert [u.platform for u in job.uploads] == ["youtube"]
+
+
+def test_make_video_runs_housekeeping(cfg, fakes, monkeypatch):
+    seen = []
+    monkeypatch.setattr(pipeline, "housekeeping", lambda c: seen.append(c))
+    pipeline.make_video(cfg, topic="Housekeeping")
+    assert seen == [cfg]

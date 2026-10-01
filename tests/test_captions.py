@@ -404,3 +404,42 @@ def test_real_font_file_family_if_present():
     if not path.exists():
         pytest.skip("DejaVu fonts not installed")
     assert font_family(path) == "DejaVu Sans"
+
+
+# --------------------------------------------------------------------------- scripts and languages
+
+
+def test_styles_use_unicode_bidi_encoding(tmp_path):
+    """Encoding 1 (VSFilter bidi) reorders each run between colour tags on its own, which
+    scrambles Arabic/Hebrew karaoke captions; -1 makes libass apply Unicode bidi."""
+    cfg = Config(base_dir=tmp_path)
+    lines = captions._header(cfg, captions._layout(cfg), "שלום עולם")
+    styles = [line for line in lines if line.startswith("Style:")]
+    assert len(styles) == 2 and all(line.endswith(",-1") for line in styles)
+
+
+def test_cjk_characters_are_measured_full_width():
+    assert captions._char_width("章") == 1.0 and captions._char_width("タ") == 1.0
+    assert captions._char_width("Ａ") == 1.0  # fullwidth Latin
+    sentence = "章鱼有三颗心脏"
+    assert captions.text_width(sentence, 100) == pytest.approx(700)
+
+
+def test_cjk_sentence_becomes_several_caption_words(tmp_path):
+    from autoshorts.tts.timing import display_tokens
+
+    text = "章鱼有三颗心脏，它们的血液是蓝色的。科学家们至今仍在研究这种神奇的生物。"
+    tokens = display_tokens(text)
+    assert len(tokens) >= 5 and "".join(tokens) == text
+    cfg = Config(base_dir=tmp_path)
+    lay = captions._layout(cfg)
+    # every caption word fits the frame at the configured size
+    assert all(captions.text_width(t, lay.font_size) <= lay.width * captions.MAX_TEXT_WIDTH for t in tokens)
+
+
+def test_uppercase_follows_the_script_language():
+    assert captions.upper_for("istanbul bilgi ılık", "tr") == "İSTANBUL BİLGİ ILIK"
+    assert captions.upper_for("ήλιος και αϋπνία", "el") == "ΗΛΙΟΣ ΚΑΙ ΑΥΠΝΙΑ"
+    assert captions.upper_for("istanbul", "en") == "ISTANBUL"
+    assert captions._display_word("bilgi", True, "tr") == "BİLGİ"
+    assert captions._display_word("bilgi", False, "tr") == "bilgi"

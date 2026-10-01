@@ -2,8 +2,9 @@
 
 Drop royalty-free tracks there, e.g. from the YouTube Audio Library or Pixabay Music;
 TikTok's in-app sounds cannot be baked into an uploaded file. ``pick_track`` returns
-None when music is disabled or the folder is missing/empty, and the video is rendered
-with narration only.
+None when music is disabled or the folder is missing/empty (or holds no readable track),
+and the video is rendered with narration only. Tracks are probed before use: an empty,
+truncated or zero-sample file would fail (or, looped, hang) the final render.
 """
 from __future__ import annotations
 
@@ -12,9 +13,32 @@ import random
 from pathlib import Path
 
 from .config import Config
-from .utils import log
+from .utils import AutoShortsError, log, media_duration
 
 AUDIO_EXTS = frozenset({".mp3", ".m4a", ".aac", ".wav", ".ogg", ".flac"})
+MIN_TRACK_SECONDS = 1.0
+
+# (path, mtime_ns, size) -> usable? (probed once per process)
+_USABLE: dict[tuple[str, int, int], bool] = {}
+
+
+def usable(track: Path) -> bool:
+    """True when ffprobe reads the track and it lasts at least MIN_TRACK_SECONDS."""
+    try:
+        st = track.stat()
+    except OSError:
+        return False
+    key = (str(track), st.st_mtime_ns, st.st_size)
+    if key not in _USABLE:
+        try:
+            ok = st.st_size > 0 and media_duration(track) >= MIN_TRACK_SECONDS
+            reason = "too short or empty"
+        except (AutoShortsError, OSError, ValueError) as exc:
+            ok, reason = False, str(exc).splitlines()[0] if str(exc) else type(exc).__name__
+        if not ok:
+            log.warning("music: skipping %s (%s)", track.name, reason)
+        _USABLE[key] = ok
+    return _USABLE[key]
 
 
 def list_tracks(cfg: Config) -> list[Path]:
@@ -42,6 +66,10 @@ def pick_track(cfg: Config, seed: int | str | None = None) -> Path | None:
         log.info("music: no audio files in %s, rendering without music", cfg.path(cfg.music.dir))
         return None
     rng = random.Random(seed) if seed is not None else random.Random()
-    track = rng.choice(tracks)
-    log.info("music: %s", track.name)
-    return track
+    for track in rng.sample(tracks, len(tracks)):
+        if usable(track):
+            log.info("music: %s", track.name)
+            return track
+    log.warning("music: none of the %d file(s) in %s could be read, rendering without music",
+                len(tracks), cfg.path(cfg.music.dir))
+    return None

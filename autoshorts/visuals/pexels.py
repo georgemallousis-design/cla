@@ -14,7 +14,7 @@ import requests
 
 from ..config import Config
 from ..models import ClipAsset
-from ..utils import AutoShortsError, download, ensure_dir, http_get, http_session, log
+from ..utils import AutoShortsError, download, ensure_dir, http_get, http_session, log, touch
 from . import VisualProvider, http_status, log_once, rendition_key, short_error
 
 API_URL = "https://api.pexels.com/videos/search"
@@ -110,6 +110,8 @@ class PexelsProvider(VisualProvider):
             except BaseException:
                 dest.with_suffix(dest.suffix + ".part").unlink(missing_ok=True)
                 raise
+        else:
+            touch(dest)  # recently used: kept longest by the cache pruning (retention.py)
         user = (video.get("user") or {}).get("name") or "an unknown creator"
         return ClipAsset(
             path=Path(dest), kind="video", duration=float(video.get("duration") or 0) or None,

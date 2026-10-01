@@ -6,7 +6,9 @@
 #
 # What it does (safe to run again, e.g. after `git pull`):
 #   1. apt packages: ffmpeg (with libass/libx264), espeak-ng, fonts, python3-venv
-#   2. a system user "autoshorts" that owns the repo folder and runs the videos
+#   2. a system user "autoshorts" that runs the videos. The code and .venv stay owned
+#      by root (the service cannot change what root runs on the next update); the user
+#      owns only its data: output/, cache/, state/, secrets/, .env and topics.txt
 #   3. a virtualenv in <repo>/.venv with autoshorts and the YouTube upload extras
 #   4. `autoshorts init`: config.yaml, .env and topics.txt in <repo> (never overwritten)
 #   5. /usr/local/bin/autoshorts: runs autoshorts as that user inside <repo>
@@ -87,7 +89,17 @@ if ! id -u "${RUN_USER}" >/dev/null 2>&1; then
 fi
 RUN_GROUP="$(id -gn "${RUN_USER}")"
 RUN_HOME="$(getent passwd "${RUN_USER}" | cut -d: -f6)"
-chown -R "${RUN_USER}:${RUN_GROUP}" "${APP_DIR}"
+# Code, deploy scripts and .venv belong to root: this script and the unit files are run
+# and installed by root, so a compromised service account must not be able to edit them.
+# (Earlier versions gave the whole folder to the service user; this takes it back.)
+chown -R root:root "${APP_DIR}"
+chmod -R go-w "${APP_DIR}"
+DATA_DIRS=(output cache state secrets)
+for d in "${DATA_DIRS[@]}"; do
+    mkdir -p "${APP_DIR}/${d}"
+    chown -R "${RUN_USER}:${RUN_GROUP}" "${APP_DIR}/${d}"
+done
+chmod 700 "${APP_DIR}/secrets"
 
 as_user() {
     runuser -u "${RUN_USER}" -- env HOME="${RUN_HOME}" "$@"
@@ -103,15 +115,22 @@ fi
 step "Creating the virtualenv in ${APP_DIR}/.venv"
 cd "${APP_DIR}"
 if [[ ! -x .venv/bin/python ]]; then
-    as_user python3 -m venv .venv
+    python3 -m venv .venv
 fi
-as_user .venv/bin/python -m pip install --upgrade pip
-as_user .venv/bin/python -m pip install -e "${APP_DIR}[youtube]"
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install -e "${APP_DIR}[youtube]"
+chown -R root:root .venv
 
 # --------------------------------------------------------------------------- 4. config files
 step "Creating config.yaml, .env and topics.txt (existing files are kept)"
-as_user .venv/bin/autoshorts init
+.venv/bin/autoshorts init
+# The service writes these: refreshed TikTok tokens go back into .env, and
+# "autoshorts topics add" appends to topics.txt.
+for f in .env topics.txt; do
+    [[ -f "${APP_DIR}/${f}" ]] && chown "${RUN_USER}:${RUN_GROUP}" "${APP_DIR}/${f}"
+done
 chmod 600 "${APP_DIR}/.env" 2>/dev/null || true
+chown -R "${RUN_USER}:${RUN_GROUP}" "${APP_DIR}/output" "${APP_DIR}/cache" "${APP_DIR}/state"
 
 # --------------------------------------------------------------------------- 5. wrapper
 step "Installing /usr/local/bin/autoshorts"
@@ -155,9 +174,10 @@ Next steps:
   4. YouTube upload: authorise on your PC (autoshorts auth youtube), then copy
      secrets/client_secret.json and secrets/youtube_token.json to ${APP_DIR}/secrets/
      and run:  sudo chown -R ${RUN_USER}:${RUN_GROUP} ${APP_DIR}/secrets
-  5. Start the schedule (3 videos a day):
+  5. Start the schedule (3 videos a day, made but NOT uploaded; to upload, see the
+     comment at the top of /etc/systemd/system/autoshorts.service):
        sudo systemctl start autoshorts.service       # one run now, log: journalctl -u autoshorts -e
        sudo systemctl enable --now autoshorts.timer
 
-Update later:  sudo -u ${RUN_USER} git -C ${APP_DIR} pull && sudo ${APP_DIR}/deploy/install.sh
+Update later:  sudo git -C ${APP_DIR} pull && sudo ${APP_DIR}/deploy/install.sh
 EOF

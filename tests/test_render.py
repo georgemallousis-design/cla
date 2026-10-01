@@ -400,3 +400,122 @@ def test_render_video_rejects_bad_input(media, tmp_path):
         render_video(cfg, narration_for(media), [shot], tmp_path / "nope.ass", tmp_path / "v.mp4",
                      workdir=tmp_path / "w")
     assert not (tmp_path / "v.mp4").exists()
+
+
+# --------------------------------------------------------------------------- broken inputs
+
+
+def zero_mdat(src: Path, dest: Path) -> Path:
+    """Copy of ``src`` with the video payload zeroed: ffprobe still reports the duration,
+    but no frame ever decodes."""
+    data = bytearray(src.read_bytes())
+    i = data.find(b"mdat")
+    size = int.from_bytes(data[i - 4:i], "big")
+    data[i + 4:i - 4 + size] = bytes(size - 8)
+    dest.write_bytes(bytes(data))
+    return dest
+
+
+@pytest.fixture(scope="module")
+def broken_media(tmp_path_factory) -> dict[str, Path]:
+    if shutil.which("ffmpeg") is None:
+        pytest.skip("ffmpeg not installed")
+    d = tmp_path_factory.mktemp("broken")
+    ff("-f", "lavfi", "-i", "testsrc=s=160x90:r=15:d=1", "-c:v", "libx264", "-movflags", "+faststart",
+       "clean.mp4", cwd=d)
+    # 0.5 s of picture, 20 s of sound: the format duration says 20 s
+    ff("-f", "lavfi", "-i", "testsrc=s=160x90:r=15:d=0.5", "-f", "lavfi", "-i", "sine=d=20",
+       "-c:v", "libx264", "-c:a", "aac", "shortvid_longaudio.mp4", cwd=d)
+    ff("-f", "lavfi", "-i", "sine=d=10", "-c:a", "aac", "audioonly.mp4", cwd=d)
+    return {"dir": d, "zero": zero_mdat(d / "clean.mp4", d / "zero.mp4"), "clean": d / "clean.mp4",
+            "longaudio": d / "shortvid_longaudio.mp4", "audioonly": d / "audioonly.mp4"}
+
+
+@needs_ffmpeg
+def test_run_ffmpeg_timeout_becomes_autoshorts_error(broken_media):
+    from autoshorts.utils import run_ffmpeg
+
+    assert media_duration(broken_media["zero"]) == pytest.approx(1.0, abs=0.1)  # probes fine
+    args = ["-stream_loop", "-1", "-i", str(broken_media["zero"]), "-frames:v", "30", "-f", "null", "-"]
+    with pytest.raises(AutoShortsError, match="timed out"):
+        run_ffmpeg(args, desc="looped broken clip", timeout=2)
+
+
+@needs_ffmpeg
+def test_undecodable_short_clip_falls_back_instead_of_hanging(broken_media, tmp_path, monkeypatch, caplog):
+    monkeypatch.setattr(render, "SHOT_TIMEOUT_MIN", 3.0)
+    monkeypatch.setattr(render, "SHOT_TIMEOUT_PER_SECOND", 0.0)
+    cfg = small_cfg(tmp_path)
+    out = tmp_path / "shot.mp4"
+    with caplog.at_level(logging.WARNING, logger="autoshorts"):
+        render._render_shot(cfg, 1, ClipAsset(broken_media["zero"], kind="video"), 30, out)
+    assert "plain background" in caplog.text
+    assert streams(out)["video"]["width"] == W
+
+
+@needs_ffmpeg
+def test_offsets_use_the_video_stream_length_and_empty_shots_fall_back(broken_media, tmp_path, caplog):
+    clip = ClipAsset(broken_media["longaudio"], kind="video")
+    assert media_duration(clip.path) == pytest.approx(20.0, abs=0.1)
+    assert render._source_duration(clip) == pytest.approx(0.5, abs=0.1)  # the picture's length
+
+    # Even when an offset lands past the last frame (ffmpeg exits 0 with no stream),
+    # the shot is checked and replaced, so the background never comes out short.
+    cfg = small_cfg(tmp_path)
+    out = tmp_path / "shot.mp4"
+    with caplog.at_level(logging.WARNING, logger="autoshorts"):
+        render.run_ffmpeg(build_shot_command(clip, out, index=1, frames=30, width=W, height=H, fps=FPS,
+                                             src_duration=20.0), desc="seek past the end")
+        assert not render._shot_ok(out, 30)
+        render._render_shot(cfg, 1, clip, 30, out)
+    assert render._shot_ok(out, 30)
+
+
+@needs_ffmpeg
+def test_render_video_survives_a_broken_music_track(media, tmp_path, caplog):
+    cfg = small_cfg(media["dir"], enabled=True, duck=True, volume=0.15)
+    bad = tmp_path / "garbage.mp3"
+    bad.write_bytes(bytes(range(256)) * 40)
+    shots = [Shot(ClipAsset(media["tall"], kind="video"), 0.0, NARRATION_SECONDS)]
+    with caplog.at_level(logging.WARNING, logger="autoshorts"):
+        result = render_video(cfg, narration_for(media), shots, None, tmp_path / "v.mp4", music_path=bad)
+    assert "rendering again without music" in caplog.text
+    assert result.duration == pytest.approx(NARRATION_SECONDS + TAIL_SECONDS, abs=0.1)
+
+
+def test_video_shots_convert_to_bt709_and_tonemap_hdr():
+    sdr = render.shot_filter(False, W, H, FPS, 30)
+    assert "out_color_matrix=bt709" in sdr and "tonemap" not in sdr
+    hdr = render.shot_filter(False, W, H, FPS, 30, tonemap=True)
+    assert hdr.index("tonemap=hable") < hdr.index(f"scale={W}:{H}")  # tone-mapped before the cover scale
+    clip = ClipAsset(Path("/clips/hlg.mov"), kind="video")
+    args = build_shot_command(clip, "o.mp4", index=0, frames=30, width=W, height=H, fps=FPS, tonemap=True)
+    assert "zscale=t=linear" in args[args.index("-vf") + 1]
+
+
+def test_render_timeouts_scale_with_length():
+    assert render.shot_timeout(1) == render.SHOT_TIMEOUT_MIN
+    assert render.shot_timeout(60) > render.SHOT_TIMEOUT_MIN
+    assert render.final_timeout(170) > render.final_timeout(10) >= render.FINAL_TIMEOUT_MIN
+
+
+@needs_ffmpeg
+def test_local_provider_skips_audio_only_and_undecodable_clips(broken_media, tmp_path, caplog):
+    from autoshorts.visuals import local
+
+    root = tmp_path / "bg"
+    root.mkdir()
+    for key in ("audioonly", "zero", "clean"):
+        shutil.copy2(broken_media[key], root / broken_media[key].name)
+    (root / "broken.jpg").write_bytes(b"not an image")
+    cfg = Config(base_dir=tmp_path)
+    cfg.visuals.local_dir = "bg"
+    local._DURATIONS.clear()
+    local._DECODES.clear()
+    with caplog.at_level(logging.WARNING, logger="autoshorts"):
+        clips = local.LocalProvider(cfg).search("anything", min_seconds=0.5, count=4)
+    assert [c.path.name for c in clips] == ["clean.mp4"]
+    for name in ("audioonly.mp4", "zero.mp4", "broken.jpg"):
+        assert f"skipping {name}" in caplog.text
+    local._DURATIONS.clear()
+    local._DECODES.clear()

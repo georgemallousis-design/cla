@@ -286,6 +286,7 @@ class OpenAICompatibleGenerator(LLMGenerator):
         if self.json_mode:
             payload["response_format"] = {"type": "json_object"}
         resp = self._post(url, payload, headers)
+        _raise_if_model_gone(resp, ocfg.base_url, ocfg.model)
         if resp.status_code == 400 and "response_format" in payload:
             log.info("%s rejected JSON mode (%s); retrying without it", ocfg.base_url, _error_text(resp))
             self.json_mode = False
@@ -312,10 +313,33 @@ def _retry_after(resp: requests.Response, default: float) -> float:
     return max(0.0, min(value, MAX_RETRY_WAIT))
 
 
+_MODEL_GONE_RE = re.compile(r"decommission|model_not_found|does not exist|no longer (?:available|supported)", re.I)
+
+
+def _raise_if_model_gone(resp: requests.Response, base_url: str, model: str) -> None:
+    """Providers retire models (Groq shut llama-3.3-70b-versatile down in August 2026) and
+    answer 400/404 'model_decommissioned' / 'model_not_found'. Say so plainly, instead of
+    mistaking it for a rejected JSON mode or a wrong base_url."""
+    if resp.status_code not in (400, 404):
+        return
+    try:
+        raw = resp.text or ""
+    except Exception:  # pragma: no cover - defensive
+        raw = ""
+    detail = _error_text(resp)
+    if _MODEL_GONE_RE.search(detail) or _MODEL_GONE_RE.search(raw[:2000]):
+        raise AutoShortsError(
+            f"model '{model}' is no longer available at {base_url}; set script.openai_compatible.model "
+            f"in config.yaml to a current model (Groq: openai/gpt-oss-120b, list: "
+            f"https://console.groq.com/docs/models): {detail}"
+        )
+
+
 def _raise_for_api_status(resp: requests.Response, base_url: str, model: str, key_env: str) -> None:
     code = resp.status_code
     if code == 200:
         return
+    _raise_if_model_gone(resp, base_url, model)
     detail = _error_text(resp)
     if code in (401, 403):
         raise AutoShortsError(f"{base_url} rejected the API key (HTTP {code}); check {key_env} in .env: {detail}")

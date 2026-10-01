@@ -11,9 +11,11 @@ import dataclasses
 import importlib.util
 import json
 import logging
+import os
 import platform
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -36,6 +38,10 @@ EXIT_INTERRUPTED = 130
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(__file__).resolve().parent / "data"
+# Copies of the repo-root example files, shipped inside the package so that a regular
+# (non-editable) "pip install ." can still run "autoshorts init". The root files are the
+# source of truth; tests/test_cli.py checks the copies are identical.
+TEMPLATES_DIR = DATA_DIR / "templates"
 FORMAT_HELP = "facts, story, quiz, motivation, explainer or random (default: script.format in config)"
 PLATFORM_HELP = "comma-separated: youtube,tiktok"
 
@@ -65,6 +71,10 @@ def _setup_logging(level: str) -> None:
     logging.getLogger().setLevel(numeric)
     for noisy in ("urllib3", "asyncio", "googleapiclient.discovery_cache", "websockets"):
         logging.getLogger(noisy).setLevel(max(numeric, logging.INFO))
+    # At DEBUG these log OAuth request bodies and tokens (client secret, auth code,
+    # access/refresh tokens), so they stay at WARNING even with -v.
+    for secretive in ("requests_oauthlib", "oauthlib", "google_auth_oauthlib"):
+        logging.getLogger(secretive).setLevel(logging.WARNING)
 
 
 def _load(args: argparse.Namespace) -> Config:
@@ -126,12 +136,19 @@ def _print_job(job: Any) -> None:
 
 
 def _template(name: str) -> str | None:
-    """Text of a template shipped next to the package (repo root) or in package data."""
-    for folder in (REPO_ROOT, DATA_DIR):
-        path = folder / name
+    """Text of a template from the repo root (source checkout / editable install) or the
+    copy in package data (regular install; dot files are stored without the dot)."""
+    for path in (REPO_ROOT / name, TEMPLATES_DIR / name.lstrip(".")):
         if path.is_file():
             return path.read_text(encoding="utf-8")
     return None
+
+
+def _write_private(path: Path, text: str) -> None:
+    """Create ``path`` readable by its owner only (0600): .env will hold API keys."""
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
+        fh.write(text)
 
 
 def default_config_yaml() -> str:
@@ -188,7 +205,10 @@ def cmd_init(args: argparse.Namespace) -> int:
             continue
         text = _template(template)
         source = template if text is not None else "built-in defaults"
-        target.write_text(text if text is not None else fallback(), encoding="utf-8")
+        if target.name == ".env":
+            _write_private(target, text if text is not None else fallback())
+        else:
+            target.write_text(text if text is not None else fallback(), encoding="utf-8")
         print(f"created {target} (from {source})")
 
     cfg = load_config(folder / cfg_path.name)
@@ -217,16 +237,30 @@ class Check:
     hint: str = ""
 
 
+# Since January 2026 Homebrew's "ffmpeg" formula is a slim build without libass (no
+# captions); "ffmpeg-full" has it but is keg-only, so it must be put on PATH.
+MAC_FFMPEG_HINT = (
+    "install FFmpeg with libass: brew install ffmpeg-full, then put it on PATH: "
+    "echo 'export PATH=\"$(brew --prefix ffmpeg-full)/bin:$PATH\"' >> ~/.zprofile (open a new terminal)"
+)
+
+
 def _ffmpeg_install_hint() -> str:
     if sys.platform.startswith("win"):
         return "install FFmpeg: winget install Gyan.FFmpeg (then open a new terminal)"
     if sys.platform == "darwin":
-        return "install FFmpeg: brew install ffmpeg"
+        return MAC_FFMPEG_HINT
     return "install FFmpeg: sudo apt install ffmpeg (or your distro's package manager)"
 
 
+def _ffmpeg_build_hint(feature: str) -> str:
+    if sys.platform == "darwin":
+        return MAC_FFMPEG_HINT
+    return f"install an FFmpeg build with {feature} (the official full/static builds have it)"
+
+
 def _run_text(cmd: list[str], timeout: float = 20) -> str:
-    proc = subprocess.run(cmd, capture_output=True, text=True, errors="replace", timeout=timeout)
+    proc = subprocess.run(cmd, capture_output=True, encoding="utf-8", errors="replace", timeout=timeout)
     return (proc.stdout or "") + (proc.stderr or "")
 
 
@@ -254,13 +288,13 @@ def check_ffmpeg() -> list[Check]:
         rows.append(Check("OK", "libass", "subtitles filter available"))
     else:
         rows.append(Check("FAIL", "libass", "FFmpeg has no 'subtitles' filter (captions need libass)",
-                          "install an FFmpeg build with libass (the official full/static builds have it)"))
+                          _ffmpeg_build_hint("libass")))
     encoders = _run_text([ffmpeg, "-hide_banner", "-encoders"])
     if re.search(r"\blibx264\b", encoders):
         rows.append(Check("OK", "libx264", "H.264 encoder available"))
     else:
         rows.append(Check("FAIL", "libx264", "FFmpeg has no libx264 encoder",
-                          "install an FFmpeg build with libx264 (the official full/static builds have it)"))
+                          _ffmpeg_build_hint("libx264")))
     return rows
 
 
@@ -455,6 +489,36 @@ def check_files(cfg: Config, config_arg: str | None) -> list[Check]:
     return rows
 
 
+MIN_FREE_GB = 2.0  # a render needs a few hundred MB; below this the next runs may fail
+
+
+def check_disk(cfg: Config) -> list[Check]:
+    from .retention import folder_size
+
+    out = cfg.path(cfg.output_dir)
+    probe = out if out.exists() else cfg.base_dir
+    free_gb = shutil.disk_usage(probe).free / 1e9
+    cache_mb = folder_size(cfg.path(cfg.visuals.cache_dir)) / 1e6
+    detail = (f"{free_gb:.1f} GB free; cache {cache_mb:.0f} MB (limit retention.cache_max_mb "
+              f"{cfg.retention.cache_max_mb})")
+    if free_gb < MIN_FREE_GB:
+        return [Check("WARN", "disk space", detail,
+                      f"free some disk space, lower retention.cache_max_mb or set retention.output_keep_days "
+                      f"(old videos in {cfg.output_dir}/)")]
+    return [Check("OK", "disk space", detail)]
+
+
+def _env_permissions(cfg: Config) -> list[Check]:
+    env = cfg.base_dir / ".env"
+    if os.name != "posix" or not env.is_file():
+        return []
+    mode = env.stat().st_mode & 0o777
+    if mode & 0o077:
+        return [Check("WARN", ".env permissions", f"{env} is readable by other users ({oct(mode)})",
+                      f"chmod 600 {env}")]
+    return []
+
+
 def run_checks(cfg: Config, config_arg: str | None) -> list[Check]:
     checks: list[tuple[str, Callable[[], list[Check]]]] = [
         ("python", check_python),
@@ -465,7 +529,8 @@ def run_checks(cfg: Config, config_arg: str | None) -> list[Check]:
         ("visuals", lambda: check_visuals(cfg)),
         ("music", lambda: check_music(cfg)),
         ("uploads", lambda: check_uploads(cfg)),
-        ("files", lambda: check_files(cfg, config_arg)),
+        ("files", lambda: check_files(cfg, config_arg) + _env_permissions(cfg)),
+        ("disk space", lambda: check_disk(cfg)),
     ]
     rows: list[Check] = []
     for name, fn in checks:
@@ -545,7 +610,9 @@ def cmd_script(args: argparse.Namespace) -> int:
     topic = args.topic or TopicQueue(cfg).next()
     fmt = pipeline.resolve_format(args.format or cfg.script.format)
     script = pipeline.generate_script(cfg, topic, fmt)
-    print(json.dumps(script.to_dict(), indent=2, ensure_ascii=False))
+    # ASCII-escaped JSON: "autoshorts script > x.json" on Windows writes stdout in the ANSI
+    # code page (and PowerShell 5.1 re-decodes it), which would turn Greek or emoji into '?'.
+    print(json.dumps(script.to_dict(), indent=2, ensure_ascii=True))
     return EXIT_OK
 
 
@@ -730,8 +797,19 @@ def _safe_stdio() -> None:
             pass
 
 
+def _exit_on_sigterm(signum: int, frame: Any) -> None:
+    # systemd (TimeoutStartSec, stop) and timeout(1) send SIGTERM. Raising here unwinds the
+    # pipeline normally: the job gets error.txt/job.json and its work/ folder is removed.
+    raise SystemExit(128 + signum)
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     _safe_stdio()
+    if hasattr(signal, "SIGTERM") and sys.platform != "win32":
+        try:
+            signal.signal(signal.SIGTERM, _exit_on_sigterm)
+        except ValueError:  # not the main thread (e.g. called from a test runner thread)
+            pass
     parser = build_parser()
     args = parser.parse_args(argv)
     func = getattr(args, "func", None)

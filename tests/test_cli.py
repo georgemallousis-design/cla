@@ -98,6 +98,7 @@ def test_init_creates_files_without_overwriting(isolated, monkeypatch, capsys):
     empty.mkdir()
     monkeypatch.setattr(cli, "REPO_ROOT", empty)
     monkeypatch.setattr(cli, "DATA_DIR", empty)
+    monkeypatch.setattr(cli, "TEMPLATES_DIR", empty)
 
     assert cli.main(["init"]) == 0
     for name in ("config.yaml", ".env", "topics.txt"):
@@ -136,6 +137,62 @@ def test_init_prefers_repo_templates(isolated, monkeypatch):
     assert (target / "config.yaml").read_text(encoding="utf-8") == "output_dir: videos\n"
     assert (target / ".env").read_text(encoding="utf-8") == "PEXELS_API_KEY=\n"
     assert (target / "topics.txt").read_text(encoding="utf-8") == "Example topic\n"
+
+
+@pytest.mark.parametrize("root_name, packaged_name", [
+    ("config.example.yaml", "config.example.yaml"),
+    (".env.example", "env.example"),
+    ("topics.example.txt", "topics.example.txt"),
+])
+def test_packaged_templates_match_the_repo_files(root_name, packaged_name):
+    """The root files are the source of truth; the copies in autoshorts/data/templates are
+    what a regular (non-editable) install ships. Re-copy them after editing the root files."""
+    packaged = cli.TEMPLATES_DIR / packaged_name
+    assert packaged.is_file(), packaged
+    assert packaged.read_bytes() == (REPO / root_name).read_bytes(), f"copy {root_name} to {packaged}"
+
+
+def test_package_data_includes_templates():
+    data = (REPO / "pyproject.toml").read_text(encoding="utf-8")
+    assert '"data/templates/*"' in data
+
+
+def test_init_uses_packaged_templates_without_a_repo_checkout(isolated, monkeypatch):
+    empty = isolated / "site-packages"
+    empty.mkdir()
+    monkeypatch.setattr(cli, "REPO_ROOT", empty)  # like a wheel install: no example files next to the package
+    assert cli.main(["init"]) == 0
+    assert (isolated / "config.yaml").read_text(encoding="utf-8") == (REPO / "config.example.yaml").read_text(encoding="utf-8")
+    assert (isolated / ".env").read_text(encoding="utf-8") == (REPO / ".env.example").read_text(encoding="utf-8")
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX permissions")
+def test_init_creates_a_private_env_file(isolated, monkeypatch):
+    monkeypatch.setattr("os.umask", lambda mask: 0o022)  # no effect on the check, documents intent
+    assert cli.main(["init"]) == 0
+    assert (isolated / ".env").stat().st_mode & 0o777 == 0o600
+    assert (isolated / "config.yaml").stat().st_mode & 0o077 != 0o077  # others keep their usual mode
+
+
+def test_macos_ffmpeg_hint_mentions_ffmpeg_full(monkeypatch):
+    monkeypatch.setattr(cli.sys, "platform", "darwin")
+    for hint in (cli._ffmpeg_install_hint(), cli._ffmpeg_build_hint("libass")):
+        assert "brew install ffmpeg-full" in hint and "brew --prefix ffmpeg-full" in hint
+    monkeypatch.setattr(cli.sys, "platform", "linux")
+    assert "official full/static" in cli._ffmpeg_build_hint("libass")
+
+
+def test_verbose_logging_keeps_oauth_libraries_quiet():
+    import logging
+
+    cli._setup_logging("DEBUG")
+    for name in ("requests_oauthlib", "oauthlib", "google_auth_oauthlib"):
+        assert logging.getLogger(name).getEffectiveLevel() >= logging.WARNING, name
+
+
+def test_doctor_reports_disk_space(capsys):
+    cli.main(["doctor"])
+    assert "disk space" in capsys.readouterr().out
 
 
 # --------------------------------------------------------------------------- doctor
@@ -254,6 +311,18 @@ def test_script_prints_json(monkeypatch, capsys):
     assert data["segments"] == [{"text": "Hello.", "visual_query": "sun"}]
 
 
+def test_script_json_is_ascii_safe_for_redirected_windows_consoles(monkeypatch, capsys):
+    def fake_generate(cfg, topic, fmt):
+        return VideoScript(topic=topic, format=fmt, title="Ο ήλιος 🌞", segments=[Segment("Γεια.", "sun")],
+                           description="d", language="el")
+
+    monkeypatch.setattr(pipeline, "generate_script", fake_generate)
+    assert cli.main(["script", "--topic", "Ήλιος", "--format", "facts"]) == 0
+    out = capsys.readouterr().out
+    assert out.isascii()  # survives cp1252 and PowerShell 5.1 re-decoding
+    assert json.loads(out)["title"] == "Ο ήλιος 🌞"
+
+
 def test_upload_command(isolated, monkeypatch, capsys):
     seen = {}
 
@@ -317,3 +386,44 @@ def test_mask():
     assert cli.mask(None) == ""
     assert cli.mask("short") == "set"
     assert cli.mask("0123456789abcdefWXYZ") == "set (...WXYZ)"
+
+
+# --------------------------------------------------------------------------- .env encodings (Windows)
+
+
+def test_env_with_utf8_bom_keeps_its_first_key(isolated, monkeypatch):
+    """PowerShell 5.1 'Set-Content .env ... -Encoding UTF8' writes a byte-order mark."""
+    monkeypatch.delenv("PEXELS_API_KEY", raising=False)
+    (isolated / "config.yaml").write_text("log_level: INFO\n", encoding="utf-8")
+    (isolated / ".env").write_bytes("﻿PEXELS_API_KEY=abc123\n".encode("utf-8"))
+    load_config(isolated / "config.yaml")
+    assert Config.secret("PEXELS_API_KEY") == "abc123"
+
+
+def test_utf16_env_gives_a_clear_error(isolated, capsys):
+    (isolated / "config.yaml").write_text("log_level: INFO\n", encoding="utf-8")
+    (isolated / ".env").write_bytes("PEXELS_API_KEY=abc\r\n".encode("utf-16"))  # PowerShell 5.1 '>'
+    assert cli.main(["doctor"]) == cli.EXIT_ERROR
+    err = capsys.readouterr().err
+    assert ".env is not UTF-8" in err and "UTF-16" in err
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX signals")
+def test_sigterm_unwinds_cleanly(tmp_path):
+    """A service timeout (SIGTERM) must run the pipeline's cleanup, not kill Python outright."""
+    script = (
+        "import os, signal, sys, threading\n"
+        "from autoshorts import cli\n"
+        "def cmd(args):\n"
+        "    try:\n"
+        "        os.kill(os.getpid(), signal.SIGTERM)\n"
+        "        import time; time.sleep(5)\n"
+        "    finally:\n"
+        f"        open({str(tmp_path / 'cleaned')!r}, 'w').close()\n"
+        "cli.cmd_topics = cmd\n"
+        "sys.exit(cli.main(['topics']))\n"
+    )
+    proc = subprocess.run([sys.executable, "-c", script], cwd=tmp_path, capture_output=True, text=True,
+                          timeout=60, env={**__import__("os").environ, "PYTHONPATH": str(REPO)})
+    assert proc.returncode == 143, proc.stderr
+    assert (tmp_path / "cleaned").exists()

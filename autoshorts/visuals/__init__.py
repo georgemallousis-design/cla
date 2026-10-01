@@ -30,7 +30,7 @@ from pathlib import Path
 
 from ..config import Config
 from ..models import ClipAsset, Narration, Segment
-from ..utils import AutoShortsError, ensure_dir, log
+from ..utils import AutoShortsError, ensure_dir, log, redact
 
 PROVIDER_NAMES = ("pexels", "pixabay", "local", "generated")
 
@@ -107,8 +107,12 @@ def http_status(exc: BaseException) -> int | None:
 
 
 def short_error(exc: BaseException) -> str:
-    """First line of an error, for logs (requests errors never include our headers)."""
-    text = str(exc) or type(exc).__name__
+    """First line of an error, for logs, with credential query parameters masked.
+
+    requests errors never include our headers (Pexels' key), but connection errors do
+    include the full URL with its query string, where Pixabay's ``key=`` lives.
+    """
+    text = redact(str(exc) or type(exc).__name__)
     return text.splitlines()[0][:300]
 
 
@@ -116,14 +120,16 @@ def rendition_key(width: int, height: int, target_w: int, target_h: int) -> tupl
     """Sort key (lower is better) for choosing a stock video file.
 
     Portrait first (landscape gets centre-cropped, losing most of its pixels), then files
-    at least ~1280 px tall, then the one closest to the output size; ties go to the
-    larger file. For landscape files only the height survives the 9:16 crop, so only
-    the height is compared.
+    at least ~1280 px tall, then files not much bigger than the output (a 4K download is
+    several times the size of 1440p/1080p for no visible gain once scaled down), then the
+    one closest to the output size; ties go to the larger file. For landscape files only
+    the height survives the 9:16 crop, so only the height is compared.
     """
     min_h = min(1280, target_h)
     landscape = width > height
+    too_big = max(width, height) > 1.5 * max(target_w, target_h)
     distance = abs(height - target_h) if landscape else abs(width - target_w) + abs(height - target_h)
-    return (landscape, height < min_h, distance, -height)
+    return (landscape, height < min_h, too_big, distance, -height)
 
 
 def query_keywords(text: str) -> list[str]:

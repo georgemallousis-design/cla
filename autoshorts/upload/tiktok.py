@@ -15,7 +15,9 @@ https://developers.tiktok.com, add the Content Posting API product, authorise yo
 account through your app's redirect and put the user access token in the env var named by
 ``upload.tiktok.access_token_env`` (default TIKTOK_ACCESS_TOKEN). Access tokens last 24 h;
 set TIKTOK_REFRESH_TOKEN, TIKTOK_CLIENT_KEY and TIKTOK_CLIENT_SECRET as well and an expired
-token is refreshed automatically (in memory only, nothing is written to disk).
+token is refreshed automatically. The new access token (and the new refresh token, when
+TikTok rotates it) is written back to the .env next to config.yaml (atomically, mode
+0600), so the next scheduled run starts from valid tokens.
 
 Chunk rules (media transfer guide): chunks are 5-64 MB and uploaded in order, the final
 chunk may be bigger (up to 128 MB) to absorb the remainder, ``total_chunk_count`` is
@@ -33,7 +35,7 @@ import requests
 
 from ..config import Config
 from ..models import UploadResult
-from ..utils import AutoShortsError, http_session, log, media_duration
+from ..utils import AutoShortsError, http_session, log, media_duration, redact, update_env
 
 API_BASE = "https://open.tiktokapis.com"
 CREATOR_INFO_URL = f"{API_BASE}/v2/post/publish/creator_info/query/"
@@ -173,10 +175,12 @@ def _refresh_credentials() -> tuple[str, str, str] | None:
 class TikTokClient:
     """Minimal JSON client; refreshes the access token once on 401 when it can."""
 
-    def __init__(self, access_token: str | None, token_env: str, session: requests.Session | None = None):
+    def __init__(self, access_token: str | None, token_env: str, session: requests.Session | None = None,
+                 env_file: Path | None = None):
         self.access_token = access_token
         self.token_env = token_env
         self.session = session or http_session()
+        self.env_file = env_file  # refreshed tokens are saved here (when the file exists)
         self._refreshed = False
 
     def _headers(self) -> dict[str, str]:
@@ -209,7 +213,7 @@ class TikTokClient:
             return self._post_once(url, body)
 
     def refresh(self) -> None:
-        """Exchange the refresh token for a new access token (kept in memory/os.environ only)."""
+        """Exchange the refresh token for a new access token; saved to os.environ and ``env_file``."""
         creds = _refresh_credentials()
         if not creds:
             raise AutoShortsError(f"set {REFRESH_TOKEN_ENV}, {CLIENT_KEY_ENV} and {CLIENT_SECRET_ENV} to refresh TikTok tokens")
@@ -238,14 +242,31 @@ class TikTokClient:
             )
         self.access_token = token
         os.environ[self.token_env] = token  # later uploads in this run reuse it
+        updates = {self.token_env: str(token)}
         new_refresh = payload.get("refresh_token")
         if new_refresh and new_refresh != refresh_token:
+            # TikTok: "You must use the newly-returned token if the value is different".
             os.environ[REFRESH_TOKEN_ENV] = new_refresh
-            log.warning(
-                "TikTok issued a new refresh token (used for the rest of this run; not saved or shown). "
-                "If the old one stops working, re-authorise and update %s in .env.", REFRESH_TOKEN_ENV,
-            )
-        log.info("TikTok access token refreshed")
+            updates[REFRESH_TOKEN_ENV] = str(new_refresh)
+        log.info("TikTok access token refreshed%s", " (TikTok also issued a new refresh token)"
+                 if len(updates) > 1 else "")
+        self._save(updates)
+
+    def _save(self, updates: dict[str, str]) -> None:
+        """Write refreshed tokens back to .env so the next run (a new process) uses them."""
+        if self.env_file is None or not Path(self.env_file).is_file():
+            if REFRESH_TOKEN_ENV in updates:
+                log.warning("TikTok issued a new refresh token but there is no .env to save it in; "
+                            "update %s by hand (python deploy/tiktok_token.py --refresh)", REFRESH_TOKEN_ENV)
+            return
+        try:
+            update_env(self.env_file, updates)
+        except OSError as exc:
+            log.warning("could not save the refreshed TikTok token(s) %s to %s (%s); the next run may need "
+                        "python deploy/tiktok_token.py --refresh", ", ".join(updates), self.env_file,
+                        type(exc).__name__)
+        else:
+            log.info("saved the refreshed TikTok token(s) %s to %s", ", ".join(updates), self.env_file)
 
 
 # --------------------------------------------------------------------------- steps
@@ -281,7 +302,7 @@ def _put_chunk(session: requests.Session, url: str, data: bytes, headers: dict[s
         try:
             resp = session.put(url, data=data, headers=headers, timeout=PUT_TIMEOUT)
         except (requests.ConnectionError, requests.Timeout) as exc:
-            error = f"{type(exc).__name__}: {exc}"
+            error = f"{type(exc).__name__}: {redact(exc)}"  # the URL carries upload_token
         else:
             if resp.status_code in (200, 201, 206):
                 return
@@ -414,7 +435,7 @@ def upload(cfg: Config, video_path: str | Path, meta: dict[str, Any]) -> UploadR
             f"{CLIENT_KEY_ENV} and {CLIENT_SECRET_ENV} for automatic refresh)."
         )
 
-    client = TikTokClient(token, tcfg.access_token_env)
+    client = TikTokClient(token, tcfg.access_token_env, env_file=cfg.base_dir / ".env")
     video_size = video_path.stat().st_size
     chunk_size, count = chunk_plan(video_size)
     source_info = {"source": "FILE_UPLOAD", "video_size": video_size, "chunk_size": chunk_size, "total_chunk_count": count}
@@ -435,5 +456,5 @@ def upload(cfg: Config, video_path: str | Path, meta: dict[str, Any]) -> UploadR
     except TikTokAPIError as exc:
         return UploadResult(platform="tiktok", ok=False, error=explain(exc))
     except requests.RequestException as exc:
-        return UploadResult(platform="tiktok", ok=False, error=f"network error talking to TikTok: {exc}")
+        return UploadResult(platform="tiktok", ok=False, error=f"network error talking to TikTok: {redact(exc)}")
     return _result_from_status(publish_id, status, username, mode)

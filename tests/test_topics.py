@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import random
 from pathlib import Path
 
@@ -129,6 +130,39 @@ def test_corrupt_state_file_is_treated_as_empty(cfg):
     assert q.next() == "a"
     q.mark_used("a")  # rewrites a valid file
     assert list(json.loads(state.read_text(encoding="utf-8"))["used"]) == ["a"]
+
+
+def test_corrupt_state_file_is_moved_aside_not_overwritten(cfg, caplog):
+    """A truncated history must not be replaced by a one-entry file (that would make every
+    old topic come round again on the timer)."""
+    write_topics(cfg, "alpha\nbeta\ngamma\n")
+    q = TopicQueue(cfg)
+    q.mark_used("alpha")
+    q.mark_used("beta")
+    state = cfg.path(cfg.topics.state_file)
+    good = state.read_text(encoding="utf-8")
+    state.write_text(good[:-5], encoding="utf-8")  # truncated by a crash
+    with caplog.at_level(logging.WARNING, logger="autoshorts"):
+        assert q.next() == "alpha"
+    q.mark_used("alpha")
+    aside = [p for p in state.parent.iterdir() if p.name.startswith("used_topics.json.corrupt-")]
+    assert len(aside) == 1 and aside[0].read_text(encoding="utf-8") == good[:-5]  # old history kept
+    assert "moved it to" in caplog.text
+
+
+def test_mark_used_refuses_to_overwrite_an_unmovable_unreadable_history(cfg, monkeypatch):
+    write_topics(cfg, "a\n")
+    state = cfg.path(cfg.topics.state_file)
+    state.parent.mkdir(parents=True)
+    state.write_text("{not json", encoding="utf-8")
+
+    def no_move(src, dst):
+        raise PermissionError("read-only")
+
+    monkeypatch.setattr("autoshorts.topics.os.replace", no_move)
+    with pytest.raises(AutoShortsError, match="refusing to overwrite"):
+        TopicQueue(cfg).mark_used("a")
+    assert state.read_text(encoding="utf-8") == "{not json"
 
 
 def test_add_appends_only_new_unique_topics(cfg):

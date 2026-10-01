@@ -140,6 +140,13 @@ class OfflineGenerator(ScriptGenerator):
 
         scored = [(match_score(topic, e), e) for e in candidates]
         matches = [(s, e) for s, e in scored if s > 0]
+        # A matching script that was used recently is not offered again for a related
+        # topic: the same video would be made (and uploaded) once per topic. Without a
+        # fresh match the topic is treated as unknown (an unrelated script, topic unused).
+        fresh = [(s, e) for s, e in matches if staleness(e) == 0]
+        if matches and not fresh:
+            log.warning("offline: every content-bank script matching %r was used recently", topic)
+        matches = fresh
         if matches:
             if len(matches) > 1:
                 matches = [(s, e) for s, e in matches if e.get("title") != last]

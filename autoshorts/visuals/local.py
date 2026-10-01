@@ -14,15 +14,20 @@ from pathlib import Path
 
 from ..config import Config
 from ..models import ClipAsset
-from ..utils import AutoShortsError, log, media_duration
+from ..utils import AutoShortsError, decodes, log, probe_video
 from . import VisualProvider, query_keywords
 
 VIDEO_EXTS = frozenset({".mp4", ".mov", ".mkv", ".webm", ".m4v"})
 IMAGE_EXTS = frozenset({".jpg", ".jpeg", ".png", ".webp"})
 MIN_VIDEO_SECONDS = 0.5  # anything shorter is treated as broken
+# Clips shorter than this may be looped (-stream_loop -1) for a shot; they are test-decoded
+# once, because a clip whose header is fine but whose video data is not would loop forever.
+LOOP_CHECK_SECONDS = 10.0
 
-# (path, mtime_ns, size) -> duration or None when unreadable; shared by every instance.
+# (path, mtime_ns, size) -> video duration (0.0 for stills) or None when unusable;
+# shared by every instance, so a bad file is probed (and reported) once per process.
 _DURATIONS: dict[tuple[str, int, int], float | None] = {}
+_DECODES: dict[tuple[str, int, int], bool] = {}
 
 
 class LocalProvider(VisualProvider):
@@ -79,9 +84,13 @@ class LocalProvider(VisualProvider):
 
     def _asset(self, path: Path, query: str) -> ClipAsset | None:
         if path.suffix.lower() in IMAGE_EXTS:
+            if probe_duration(path, image=True) is None or not decodes_cached(path):
+                return None
             return ClipAsset(path=path, kind="image", duration=None, source="local", query=query)
         duration = probe_duration(path)
         if duration is None or duration < MIN_VIDEO_SECONDS:
+            return None
+        if duration < LOOP_CHECK_SECONDS and not decodes_cached(path):
             return None
         return ClipAsset(path=path, kind="video", duration=duration, source="local", query=query)
 
@@ -104,20 +113,49 @@ def scan_media(root: Path) -> list[Path]:
     return out
 
 
-def probe_duration(path: Path) -> float | None:
-    """Duration via ffprobe, cached per process (None when the file can't be read)."""
+def _cache_key(path: Path) -> tuple[str, int, int] | None:
     try:
         st = path.stat()
     except OSError:
         return None
-    key = (str(path), st.st_mtime_ns, st.st_size)
+    return (str(path), st.st_mtime_ns, st.st_size)
+
+
+def _skip(path: Path, reason: object) -> None:
+    text = str(reason)
+    log.warning("local visuals: skipping %s (%s)", path.name, text.splitlines()[0] if text else type(reason).__name__)
+
+
+def probe_duration(path: Path, image: bool = False) -> float | None:
+    """Length of the file's video stream via ffprobe, cached per process.
+
+    None when the file can't be read or has no video stream (an audio-only .mp4 would
+    otherwise fail every shot it is picked for). ``image=True`` only checks that a still
+    image is readable and returns 0.0.
+    """
+    key = _cache_key(path)
+    if key is None:
+        return None
     if key not in _DURATIONS:
         try:
-            _DURATIONS[key] = media_duration(path)
+            duration = probe_video(path)["duration"]
+            _DURATIONS[key] = 0.0 if image else duration
         except (AutoShortsError, OSError, ValueError) as exc:
-            log.warning("local visuals: skipping %s (%s)", path.name, str(exc).splitlines()[0] if str(exc) else exc)
+            _skip(path, exc)
             _DURATIONS[key] = None
     return _DURATIONS[key]
+
+
+def decodes_cached(path: Path) -> bool:
+    """utils.decodes(), cached per process; logs a skip when the video cannot be decoded."""
+    key = _cache_key(path)
+    if key is None:
+        return False
+    if key not in _DECODES:
+        _DECODES[key] = decodes(path)
+        if not _DECODES[key]:
+            _skip(path, "the video data cannot be decoded")
+    return _DECODES[key]
 
 
 def split_words(text: str) -> list[str]:

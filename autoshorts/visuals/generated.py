@@ -23,7 +23,7 @@ from pathlib import Path
 
 from ..config import Config
 from ..models import ClipAsset
-from ..utils import AutoShortsError, ensure_dir, log, run_ffmpeg
+from ..utils import AutoShortsError, ensure_dir, log, run_ffmpeg, touch
 from . import VisualProvider
 
 STYLE_VERSION = 1  # bump when the look of a style changes, so old cache files are not reused
@@ -77,6 +77,8 @@ class GeneratedProvider(VisualProvider):
             path = self.cache_dir / f"generated_{cache_key(query, variant, width, height, fps, duration)}.mp4"
             if not (path.exists() and path.stat().st_size > 0):
                 render_look(choose_look(seed), path, width, height, fps, duration)
+            else:
+                touch(path)  # recently used: kept longest by the cache pruning (retention.py)
             clips.append(ClipAsset(
                 path=path, kind="video", duration=duration, source="generated",
                 query=query, attribution="", width=width, height=height,
@@ -128,20 +130,23 @@ def render_look(look: Look, out_path: Path, width: int, height: int, fps: int, d
     tmp = out_path.with_name(f"{out_path.stem}.{os.getpid()}.tmp.mp4")
     styles = [look.style] + ([FALLBACK_STYLE] if look.style != FALLBACK_STYLE else [])
     error: AutoShortsError | None = None
-    for style in styles:
-        args = ffmpeg_args(Look(style, look.palette, look.seed, look.speed, look.variant),
-                           width, height, fps, duration, tmp)
-        try:
-            run_ffmpeg(args, desc=f"generated background ({style})", timeout=max(120.0, duration * 20))
-        except AutoShortsError as exc:
-            error = exc
-            log.warning("generated background style '%s' failed, trying a simpler one: %s",
-                        style, str(exc).splitlines()[0])
-            continue
-        os.replace(tmp, out_path)
-        log.debug("generated %s background %s (%.1fs)", style, out_path.name, duration)
-        return out_path
-    tmp.unlink(missing_ok=True)
+    try:
+        for style in styles:
+            args = ffmpeg_args(Look(style, look.palette, look.seed, look.speed, look.variant),
+                               width, height, fps, duration, tmp)
+            try:
+                # run_ffmpeg turns a timeout into AutoShortsError, so a slow style falls back too
+                run_ffmpeg(args, desc=f"generated background ({style})", timeout=max(120.0, duration * 20))
+            except AutoShortsError as exc:
+                error = exc
+                log.warning("generated background style '%s' failed, trying a simpler one: %s",
+                            style, str(exc).splitlines()[0])
+                continue
+            os.replace(tmp, out_path)
+            log.debug("generated %s background %s (%.1fs)", style, out_path.name, duration)
+            return out_path
+    finally:
+        tmp.unlink(missing_ok=True)  # never leave a half-written file in the cache
     assert error is not None
     raise error
 

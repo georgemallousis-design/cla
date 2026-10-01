@@ -172,7 +172,8 @@ remove the tedious parts, not your judgement:
 1. **Pick one niche** (space, history, money habits...) and fill `topics.txt` with specific,
    interesting angles. Viewers subscribe to a theme, not to a random mix.
 2. **Use a real LLM, not only the offline bank.** The offline bank is 33 fixed scripts;
-   anyone else using autoshorts has the same ones.
+   anyone else using autoshorts has the same ones. (Scheduled runs that fall back to it do
+   not upload, see [Everyday use](#everyday-use).)
 3. **Edit and curate.** Preview scripts with `autoshorts script --topic "..."`, throw away
    weak ones, fact-check what is said (LLMs invent things), and make the prompts in
    `autoshorts/script/prompts.py` sound like you.
@@ -295,8 +296,14 @@ voice), generated backgrounds. Each free key you add makes the videos better:
 | `PEXELS_API_KEY` / `PIXABAY_API_KEY` | real stock footage instead of abstract backgrounds |
 | tracks in `assets/music/` | background music |
 
-Without an LLM, each topic is only matched loosely to the closest of the 33 offline
-scripts (or a random one of the chosen format), and the topic still counts as used.
+Without an LLM, each topic is matched to the 33 offline scripts by its words. When a
+script matches (and was not used recently), the video is about that script's subject
+and the topic counts as used. When nothing matches, autoshorts makes a video from an
+unrelated script of the chosen format instead: the job folder is named after that
+script's title, a warning says so, and **the topic stays unused** for when an LLM is
+available. With `--format random` (the default `script.format`), the offline bank picks
+the format of the best-matching script, so "octopus facts" gets the octopus facts script
+rather than a random quiz.
 
 The first video takes a few minutes on a typical laptop. Watch it, read `youtube.txt` and
 `tiktok.txt` in the job folder, then tune `config.yaml`.
@@ -325,7 +332,21 @@ autoshorts --help                                 # all commands; <command> --he
 - If `upload.youtube.enabled` / `upload.tiktok.enabled` is `true` in `config.yaml`, `make`
   and `batch` upload there automatically; `--no-upload` skips it for one run.
 - Topics: the first unused line of `topics.txt` is used, and marked used only after its
-  video rendered. When the file runs out, a built-in idea is picked.
+  video rendered (and only if the video is really about it, see offline mode above). When
+  the file runs out, a built-in idea is picked. If `state/used_topics.json` ever becomes
+  unreadable (a crash, a bad edit), it is moved aside to `used_topics.json.corrupt-<time>`
+  rather than overwritten, so the history can be repaired.
+- Length: with `video.target_seconds` over 60 (the default 65), a video whose voice-over
+  ends up to about 4 seconds short of one minute gets a short outro, the last shot and the
+  music running on (with the title shown again as an end card when the outro lasts at
+  least a second), so it reaches 61 s (TikTok
+  Creator Rewards count videos over one minute). Set `video.target_seconds` to 60 or less
+  to turn this off.
+- Script writer fallback: in `script.provider: auto`, if no LLM is available or it fails
+  (quota, outage), the video is made from the offline bank but **not uploaded** (videos
+  from 33 shared stock scripts are exactly the repetitive content the platforms demote).
+  Upload it by hand with `autoshorts upload`, or set `upload.upload_offline_fallback: true`
+  (choosing `script.provider: offline` on purpose also uploads normally).
 - `batch` skips a failed video and continues; it stops early if the same error repeats
   three times in a row.
 
@@ -356,7 +377,10 @@ your key is shown in the `key` parameter row. Copy it to `PIXABAY_API_KEY=`. Lim
 
 **Groq (script writer, default API)** - sign in at <https://console.groq.com/keys>, create
 a key and copy it to `LLM_API_KEY=`. `config.yaml` already points at Groq with
-`llama-3.3-70b-versatile`. Free-tier limits are per model (see
+`openai/gpt-oss-120b`. Groq retires models now and then (`llama-3.3-70b-versatile` was
+shut down in August 2026); if a run fails with "model ... is no longer available", pick a
+current one from <https://console.groq.com/docs/models> and set
+`script.openai_compatible.model`. Free-tier limits are per model (see
 <https://console.groq.com/settings/limits>); one script is one request plus retries.
 
 **Google AI Studio (Gemini)** - create a key at <https://aistudio.google.com/apikey>, put
@@ -407,6 +431,11 @@ Gameplay-style backgrounds work too: a folder of long clips is used for any topi
 
 Drop `.mp3 .m4a .aac .wav .ogg .flac` files in `assets/music/`; one is picked at random
 per video and lowered automatically while the voice speaks (`music.volume`, `music.duck`).
+The narration is loudness-normalised to about -14 LUFS (the usual level on YouTube and
+TikTok) before mixing, whatever voice engine spoke it, so `music.volume` (default 0.12)
+is relative to that voice level. Files that cannot be read or are shorter than a second
+are skipped with a warning, and if the final render still fails because of the music
+track, the video is rendered again without music.
 
 **Copyright warning:** only use music you have the rights to use on the platform you post
 to. A claimed track can block a Short longer than one minute, mute a TikTok, or demonetise
@@ -510,9 +539,14 @@ own account with it.
    link, and after you paste back the address TikTok redirected you to, writes
    `TIKTOK_ACCESS_TOKEN`, `TIKTOK_REFRESH_TOKEN`, `TIKTOK_CLIENT_KEY` and
    `TIKTOK_CLIENT_SECRET` to `.env`. Access tokens last 24 hours and refresh tokens 365
-   days; with all four set, autoshorts renews the access token by itself
+   days; with all four set, autoshorts renews the access token by itself and writes the
+   new access token (and the new refresh token, when TikTok rotates it) back to that
+   `.env`, so the next scheduled run starts from valid tokens
    ([token management](https://developers.tiktok.com/doc/login-kit-manage-user-access-tokens)).
-   `python deploy/tiktok_token.py --refresh` renews and saves them manually.
+   `python deploy/tiktok_token.py --refresh` renews and saves them manually. On the
+   Ubuntu VPS `.env` belongs to the service user, so run the helper as that user:
+   `sudo -u autoshorts /opt/autoshorts/.venv/bin/python /opt/autoshorts/deploy/tiktok_token.py --env /opt/autoshorts/.env`
+   (plain `sudo` would leave a root-only `.env` the service cannot read).
 6. Enable uploads: `upload.tiktok.enabled: true` (or `--upload tiktok`).
 
 The two modes (`upload.tiktok.mode`):
@@ -530,10 +564,21 @@ The two modes (`upload.tiktok.mode`):
 
 ## Automation
 
-The scheduled job runs `autoshorts batch -n 1 --upload youtube` three times a day. Change
-the command to fit: `--upload youtube,tiktok`, or `--no-upload` to render only and publish
-the best videos by hand (the sensible choice while your YouTube project is unaudited, see
-[above](#youtube-upload-setup)).
+The scheduled jobs run `autoshorts batch -n 1 --no-upload` three times a day: they make
+the videos but do **not** upload them. Until your Google API project passes YouTube's
+audit, API uploads are locked private for good (see [above](#youtube-upload-setup)), so
+review the videos in `output/` and publish the good ones with
+`autoshorts upload <job folder> --to youtube` (or by hand). Once the project is audited,
+switch the command to `--upload youtube` (or `--upload youtube,tiktok`) as shown below for
+each scheduler.
+
+Every run also does some housekeeping so an unattended server does not fill its disk:
+`cache/clips` is trimmed to `retention.cache_max_mb` (default 5000 MB, least recently used
+first), leftovers of killed runs (`work/` folders, `*.part` files) are removed after a
+day, and with `retention.output_keep_days` set, videos older than that lose `video.mp4`
+and `thumbnail.jpg` (their `job.json`, script and metadata stay; the default 0 keeps every
+video). Stock clips are fetched at no more than about 1440p, not 4K. `autoshorts doctor`
+shows the free disk space and the cache size.
 
 ### Linux: systemd timer (recommended)
 
@@ -546,13 +591,22 @@ sudo systemctl start autoshorts.service        # one run now
 journalctl -u autoshorts.service -e            # its log
 sudo systemctl enable --now autoshorts.timer   # 3 runs a day from now on
 systemctl list-timers autoshorts.timer         # next run
-sudo systemctl edit --full autoshorts.service  # change the command
+```
+
+To upload once your YouTube project is audited, add an override (it survives updates):
+
+```bash
+sudo systemctl edit autoshorts.service
+#   [Service]
+#   ExecStart=
+#   ExecStart=/opt/autoshorts/.venv/bin/autoshorts batch -n 1 --upload youtube
 ```
 
 ### Linux: cron (alternative)
 
 [deploy/crontab.example](deploy/crontab.example) has the same schedule with a lock against
-overlapping runs and a log in `output/cron.log`:
+overlapping runs, a 2-hour time limit and a log in `output/cron.log` (rotated at 10 MB).
+Replace `--no-upload` in it with `--upload youtube` once your project is audited:
 
 ```bash
 sudo crontab -u autoshorts /opt/autoshorts/deploy/crontab.example
@@ -561,17 +615,20 @@ sudo crontab -u autoshorts /opt/autoshorts/deploy/crontab.example
 ### Windows: Task Scheduler
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File deploy\windows\schedule.ps1
+powershell -ExecutionPolicy Bypass -File deploy\windows\schedule.ps1        # make videos, no upload
 powershell -ExecutionPolicy Bypass -File deploy\windows\schedule.ps1 -At 09:00,18:00 -Upload youtube,tiktok
 Start-ScheduledTask -TaskName autoshorts     # test it now
 powershell -ExecutionPolicy Bypass -File deploy\windows\schedule.ps1 -Remove
 ```
 
 [deploy/windows/schedule.ps1](deploy/windows/schedule.ps1) registers a task "autoshorts"
-that runs `.venv\Scripts\autoshorts.exe batch -n 1 --upload youtube` daily at 08:00, 14:00
-and 20:00 and appends its output to `output\scheduler.log`. By default it runs only while
-you are signed in; add `-WhenLoggedOff` (from an administrator PowerShell) to run it while
-signed out. The PC has to be on and awake at those times.
+that runs `.venv\Scripts\autoshorts.exe batch -n 1 --no-upload` (or `--upload <platforms>`
+with `-Upload`) daily at 08:00, 14:00 and 20:00 in a hidden window (no console pops up,
+so nothing can be closed by accident mid-render) and appends its output to
+`output\scheduler.log`. The task may run for 2 hours, or 15 minutes per video for a larger
+`-Count`. By default it runs only while you are signed in; add `-WhenLoggedOff` (from an
+administrator PowerShell) to run it while signed out. The PC has to be on and awake at
+those times.
 
 ## Deploying to a VPS over SSH
 
@@ -607,9 +664,11 @@ If the repository is private, clone with a GitHub token or copy it from your PC 
 `sudo mkdir /opt/autoshorts && sudo tar -xf autoshorts.tar -C /opt/autoshorts`).
 
 [deploy/install.sh](deploy/install.sh) installs the apt packages, creates a system user
-`autoshorts` that owns `/opt/autoshorts`, a virtualenv with autoshorts, runs
-`autoshorts init`, installs the systemd units (not enabled yet) and a `/usr/local/bin/autoshorts`
-wrapper that always runs as that user in that folder. So from any admin shell:
+`autoshorts`, a virtualenv with autoshorts, runs `autoshorts init`, installs the systemd
+units (not enabled yet) and a `/usr/local/bin/autoshorts` wrapper that always runs as that
+user in that folder. The code and the virtualenv stay owned by root (the service account
+cannot change what root runs on the next update); `autoshorts` owns only its data:
+`output/`, `cache/`, `state/`, `secrets/`, `.env` and `topics.txt`. So from any admin shell:
 
 ```bash
 sudo nano /opt/autoshorts/.env        # API keys
@@ -628,7 +687,10 @@ ssh -t -i $env:USERPROFILE\.ssh\id_ed25519 deploy@<server-ip> "sudo mkdir -p /op
 Then enable the timer (see [Automation](#automation)) and download finished videos with
 `scp -i $env:USERPROFILE\.ssh\id_ed25519 -r deploy@<server-ip>:/opt/autoshorts/output/<job> .`
 
-Updating later: `sudo -u autoshorts git -C /opt/autoshorts pull && sudo /opt/autoshorts/deploy/install.sh`.
+Updating later: `sudo git -C /opt/autoshorts pull && sudo /opt/autoshorts/deploy/install.sh`.
+(On an install made before October 2026 the folder still belongs to `autoshorts`; pull
+once with `sudo -u autoshorts git -C /opt/autoshorts pull`, then run `install.sh`, which
+hands the code back to root.)
 
 Basic hardening once the `deploy` user works: disable root and password logins
 (`PermitRootLogin no` and `PasswordAuthentication no` in `/etc/ssh/sshd_config`, then
@@ -648,7 +710,7 @@ docker run --rm -v "$PWD/data:/app/data" autoshorts init
 # edit data/.env and data/config.yaml, add data/assets/music etc.
 docker run --rm -v "$PWD/data:/app/data" autoshorts doctor
 docker run --rm -v "$PWD/data:/app/data" autoshorts make
-docker run --rm -v "$PWD/data:/app/data" autoshorts batch -n 1 --upload youtube
+docker run --rm -v "$PWD/data:/app/data" autoshorts batch -n 1 --no-upload
 ```
 
 - PowerShell: use `-v "${PWD}\data:/app/data"`.
@@ -660,7 +722,9 @@ docker run --rm -v "$PWD/data:/app/data" autoshorts batch -n 1 --upload youtube
   `http://host.docker.internal:11434` (Docker Desktop; on Linux also add
   `--add-host=host.docker.internal:host-gateway`).
 - Schedule it with the host's cron, for example
-  `0 8,14,20 * * * docker run --rm -v /srv/autoshorts:/app/data autoshorts batch -n 1 --upload youtube`.
+  `0 8,14,20 * * * flock -n /tmp/autoshorts.lock timeout 2h docker run --rm -v /srv/autoshorts:/app/data autoshorts batch -n 1 --no-upload`
+  (the lock stops runs from piling up; switch to `--upload youtube` once your YouTube API
+  project is audited).
 
 ## Configuration
 
@@ -679,6 +743,7 @@ Settings people change most:
 | `captions.*` | font, size, colours, position, words per caption |
 | `music.volume`, `music.duck` | music level |
 | `upload.youtube.privacy`, `upload.tiktok.mode` | how uploads are published |
+| `retention.cache_max_mb`, `retention.output_keep_days` | disk housekeeping (see [Automation](#automation)) |
 | `keep_intermediate` | keep `work/` (audio, shots) for debugging |
 
 Secrets live only in `.env` (see [.env.example](.env.example)); settings ending in `_env`
@@ -690,6 +755,7 @@ name the variable to read.
 autoshorts/
   cli.py            command line: autoshorts init | doctor | make | batch | ...
   pipeline.py       runs the stages, creates job folders, batch mode
+  retention.py      disk housekeeping: cache size limit, leftovers of killed runs, old videos
   topics.py         topic queue (topics.txt + built-in ideas)
   config.py         settings (defaults, config.yaml, .env)
   script/           script writers: llm.py (Ollama, OpenAI-compatible), offline.py,
@@ -701,7 +767,8 @@ autoshorts/
   render.py         FFmpeg rendering and thumbnail
   metadata.py       titles, descriptions, tags, captions, credits
   upload/           youtube.py, tiktok.py
-  data/             content_bank.json (offline scripts), topic_ideas.txt
+  data/             content_bank.json (offline scripts), topic_ideas.txt,
+                    templates/ (copies of the example files for `autoshorts init`)
 assets/             backgrounds/, music/, fonts/ (your own media)
 deploy/             install.sh, systemd units, crontab, tiktok_token.py, windows/*.ps1
 tests/              pytest suite (runs offline)
@@ -709,12 +776,21 @@ config.example.yaml  .env.example  topics.example.txt  Dockerfile
 ```
 
 Created at runtime next to `config.yaml`: `output/` (videos), `cache/` (downloaded and
-generated clips, safe to delete), `state/` (used topics), `secrets/` (OAuth files).
+generated clips, safe to delete, trimmed automatically to `retention.cache_max_mb`),
+`state/` (used topics), `secrets/` (OAuth files).
 
 ## Troubleshooting
 
-Start with `autoshorts doctor`; it prints a hint for each problem. For any failed video,
-`error.txt` in its job folder has the details, and `-v` shows debug logs.
+Start with `autoshorts doctor`. It prints a table with one row per check (`OK`, `WARN` or
+`FAIL`: FFmpeg with libass/libx264, caption font, voices, script writer, stock keys, local
+clips, music, upload setup, topics, free disk space), then "Next steps" with a hint for
+every problem. It exits with code 1 when something is `FAIL` (videos cannot be made until
+that is fixed); `WARN` rows are optional improvements. API keys are never printed in full.
+
+Errors are one line (`error: ...`). An unexpected crash prints
+`error: unexpected <Type>: ...` with a note to run the same command again with `-v`, which
+shows debug logs and the full Python traceback. For any failed video, `error.txt` in its
+job folder has the traceback too.
 
 | Problem | Fix |
 |---|---|
@@ -726,6 +802,8 @@ Start with `autoshorts doctor`; it prints a hint for each problem. For any faile
 | Script writer 401 / 429 | 401: wrong `LLM_API_KEY` or `base_url`. 429: free-tier rate limit; wait, make fewer videos per hour, or switch provider. |
 | Only abstract backgrounds | No stock keys set (check `doctor`), or the provider's rate limit was hit. Add keys or your own clips. |
 | Same offline script topics again | The offline bank has 33 scripts. Set up Ollama or an API key for unlimited topics. |
+| "model ... is no longer available" | Your LLM provider retired the model in `script.openai_compatible.model`. Pick a current one (Groq: <https://console.groq.com/docs/models>, e.g. `openai/gpt-oss-120b`). |
+| `.env is not UTF-8` | PowerShell 5.1's `>` writes UTF-16. Re-save `.env` as UTF-8 (Notepad: Save as, Encoding UTF-8). |
 | YouTube `quotaExceeded` | Daily upload quota used up; it resets at midnight Pacific Time. |
 | YouTube token expired after a week | Consent screen in "Testing" mode; run `autoshorts auth youtube` again or set it to "In production". |
 | YouTube video "locked as private" | Unaudited API project; see [YouTube upload setup](#youtube-upload-setup). |

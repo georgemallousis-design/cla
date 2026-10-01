@@ -1,12 +1,33 @@
 """Tests for autoshorts.music: background track selection."""
 from __future__ import annotations
 
+import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
 
+from autoshorts import music
 from autoshorts.config import Config
 from autoshorts.music import list_tracks, pick_track
+from autoshorts.utils import AutoShortsError
+
+
+@pytest.fixture(autouse=True)
+def fake_probe(monkeypatch):
+    """Placeholder files are 'tracks' of 30 s unless a test says otherwise."""
+    lengths: dict[str, float | Exception] = {}
+
+    def fake(path):
+        value = lengths.get(Path(path).name, 30.0)
+        if isinstance(value, Exception):
+            raise value
+        return value
+
+    music._USABLE.clear()
+    monkeypatch.setattr(music, "media_duration", fake)
+    yield lengths
+    music._USABLE.clear()
 
 
 @pytest.fixture
@@ -65,3 +86,37 @@ def test_absolute_music_dir(cfg, tmp_path):
     add_files(other, "song.ogg")
     cfg.music.dir = str(other)
     assert pick_track(cfg) == other / "song.ogg"
+
+
+def test_unreadable_tracks_are_skipped(cfg, fake_probe, caplog):
+    add_files(cfg.path("music"), "broken.mp3", "silent.wav", "good.mp3")
+    fake_probe["broken.mp3"] = AutoShortsError("ffprobe could not read broken.mp3: Invalid data")
+    fake_probe["silent.wav"] = 0.0
+    for seed in range(12):
+        assert pick_track(cfg, seed=seed).name == "good.mp3"
+    assert "skipping broken.mp3" in caplog.text and "skipping silent.wav" in caplog.text
+
+
+def test_no_readable_track_means_no_music(cfg, fake_probe):
+    add_files(cfg.path("music"), "a.mp3")
+    fake_probe["a.mp3"] = AutoShortsError("bad")
+    assert pick_track(cfg) is None
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg not installed")
+def test_real_probe_rejects_empty_and_header_only_files(cfg, monkeypatch):
+    from autoshorts.utils import media_duration
+
+    monkeypatch.setattr(music, "media_duration", media_duration)
+    root = cfg.path("music")
+    root.mkdir()
+    (root / "zero.mp3").write_bytes(b"")
+    # a 44-byte WAV header with no samples: looped with -stream_loop -1 it never ends
+    header = (b"RIFF" + (36).to_bytes(4, "little") + b"WAVEfmt " + (16).to_bytes(4, "little")
+              + (1).to_bytes(2, "little") + (1).to_bytes(2, "little") + (44100).to_bytes(4, "little")
+              + (88200).to_bytes(4, "little") + (2).to_bytes(2, "little") + (16).to_bytes(2, "little")
+              + b"data" + (0).to_bytes(4, "little"))
+    (root / "empty.wav").write_bytes(header)
+    assert pick_track(cfg, seed=1) is None
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "sine=d=2", str(root / "ok.wav")], check=True)
+    assert pick_track(cfg, seed=1) == root / "ok.wav"

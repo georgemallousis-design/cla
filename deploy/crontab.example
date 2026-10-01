@@ -12,9 +12,17 @@
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/bin:/bin
 
-# m  h       dom mon dow  command
-0    8,14,20 *   *   *    cd /opt/autoshorts && mkdir -p output && flock -n output/.cron.lock .venv/bin/autoshorts batch -n 1 --upload youtube >> output/cron.log 2>&1
+# The job only renders (--no-upload). Until your Google API project passes YouTube's
+# audit, API uploads are locked private for good (README, "YouTube upload setup"): review
+# the videos in output/ and publish with `autoshorts upload <job folder> --to youtube`.
+# Once audited, replace --no-upload with --upload youtube (or --upload youtube,tiktok).
+#
+# umask 077: videos, logs and tokens are private to the service user. timeout 2h: a hung
+# run can never hold the lock forever. cron.log is rotated at 10 MB (one old copy kept).
 
-# Optional, TikTok: renew the tokens in .env once a week (autoshorts already renews the
-# 24-hour access token in memory; this also saves a rotated refresh token).
-# 30   3       *   *   1    cd /opt/autoshorts && .venv/bin/python deploy/tiktok_token.py --refresh >> output/cron.log 2>&1
+# m  h       dom mon dow  command
+0    8,14,20 *   *   *    cd /opt/autoshorts && umask 077 && mkdir -p output && { [ "$(stat -c\%s output/cron.log 2>/dev/null || echo 0)" -lt 10485760 ] || mv -f output/cron.log output/cron.log.1; } && flock -n output/.cron.lock timeout 2h .venv/bin/autoshorts batch -n 1 --no-upload >> output/cron.log 2>&1
+
+# Optional, TikTok: renew the tokens in .env once a week (autoshorts also renews an expired
+# access token by itself and saves it to .env). Same lock, so it never races a running batch.
+# 30   3       *   *   1    cd /opt/autoshorts && umask 077 && flock -w 7200 output/.cron.lock .venv/bin/python deploy/tiktok_token.py --refresh >> output/cron.log 2>&1

@@ -58,7 +58,7 @@ class EspeakTTS(TTSEngine):
         cmd = [binary, "-v", str(ec.voice), "-s", str(int(ec.speed)), "-b", "1", "-w", str(out), "-f", str(text_file)]
         log.debug("espeak: %s", " ".join(cmd))
         try:
-            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=self.timeout)
+            proc = subprocess.run(cmd, capture_output=True, encoding="utf-8", errors="replace", timeout=self.timeout)
         except subprocess.TimeoutExpired as exc:
             raise AutoShortsError(f"espeak timed out after {self.timeout}s") from exc
         finally:

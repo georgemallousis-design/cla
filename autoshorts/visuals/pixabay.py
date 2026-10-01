@@ -21,7 +21,7 @@ import requests
 
 from ..config import Config
 from ..models import ClipAsset
-from ..utils import AutoShortsError, download, ensure_dir, http_get, http_session, log
+from ..utils import AutoShortsError, download, ensure_dir, http_get, http_session, log, touch
 from . import VisualProvider, http_status, log_once, rendition_key, short_error
 
 API_URL = "https://pixabay.com/api/videos/"
@@ -69,7 +69,7 @@ class PixabayProvider(VisualProvider):
         except (requests.RequestException, ValueError, AutoShortsError) as exc:
             if http_status(exc) == 429:
                 self._disabled = True
-            log.warning("Pixabay search for %r failed: %s", q, short_error(exc))
+            log.warning("Pixabay search for %r failed: %s", q, self._safe(exc))
             return []
 
         clips: list[ClipAsset] = []
@@ -77,9 +77,14 @@ class PixabayProvider(VisualProvider):
             try:
                 clips.append(self._fetch(hit, rendition, q))
             except (requests.RequestException, OSError) as exc:
-                log.warning("Pixabay: download of video %s failed: %s", hit.get("id"), short_error(exc))
+                log.warning("Pixabay: download of video %s failed: %s", hit.get("id"), self._safe(exc))
         log.debug("Pixabay: %d clip(s) for %r", len(clips), q)
         return clips
+
+    def _safe(self, exc: BaseException) -> str:
+        """short_error() with the API key masked wherever it appears (it travels in the URL)."""
+        msg = short_error(exc)
+        return msg.replace(self.api_key, "***") if self.api_key else msg
 
     def _params(self, q: str) -> dict[str, Any]:
         return {"q": q, "safesearch": "true", "per_page": PER_PAGE}
@@ -133,6 +138,8 @@ class PixabayProvider(VisualProvider):
             except BaseException:
                 dest.with_suffix(dest.suffix + ".part").unlink(missing_ok=True)
                 raise
+        else:
+            touch(dest)  # recently used: kept longest by the cache pruning (retention.py)
         user = hit.get("user") or "an unknown creator"
         return ClipAsset(
             path=Path(dest), kind="video", duration=float(hit.get("duration") or 0) or None,

@@ -198,6 +198,22 @@ def unique_clips(shots: Sequence) -> list[ClipAsset]:
     return out
 
 
+def from_offline_bank(script: VideoScript) -> bool:
+    """Was ``script`` taken from the offline content bank (rather than written by an LLM)?"""
+    from .script.offline import load_bank
+
+    try:
+        return script.title in {e.get("title") for e in load_bank()}
+    except AutoShortsError:
+        return False
+
+
+def housekeeping(cfg: Config) -> None:
+    from .retention import housekeeping as _housekeeping
+
+    _housekeeping(cfg)
+
+
 def topic_matches(topic: str, script: VideoScript) -> bool:
     """Is ``script`` about ``topic``? False only when the script's own topic, title and
     hashtags share no content word with it (the offline content bank picked an unrelated
@@ -347,6 +363,7 @@ def make_video(
     """Make one video (and optionally upload it). Returns the finished VideoJob."""
     started = time.monotonic()
     platforms = parse_platforms(upload_to)
+    housekeeping(cfg)
     queue = TopicQueue(cfg)
     topic = " ".join((topic or "").split()) or queue.next()
     fmt = resolve_format(fmt or cfg.script.format)
@@ -412,6 +429,14 @@ def make_video(
             queue.mark_used(topic)
     except OSError as exc:
         log.warning("could not record %r as used in %s: %s", topic, queue.state_file, exc)
+    if platforms and _offline_fallback(cfg, job.script):
+        log.warning(
+            "not uploading: no LLM wrote this script (none reachable, or it failed), so it comes from the "
+            "small offline content bank, and repeated stock scripts uploaded on a schedule hurt the channel. "
+            "Upload it by hand with 'autoshorts upload %s', or set upload.upload_offline_fallback: true "
+            "(or script.provider: offline).", folder,
+        )
+        platforms = ()
     if platforms:
         save_job(job, status="rendered")
         with stage(f"Upload ({', '.join(platforms)})"):
@@ -420,6 +445,15 @@ def make_video(
     _cleanup_work(cfg, work)
     log.info("done: %s (%.1fs video, made in %s)", folder, render.duration, _fmt_seconds(time.monotonic() - started))
     return job
+
+
+def _offline_fallback(cfg: Config, script: VideoScript | None) -> bool:
+    """True when an LLM was configured (provider auto/LLM) but the script came from the
+    offline bank anyway, and the config does not allow uploading such videos."""
+    if script is None or cfg.upload.upload_offline_fallback:
+        return False
+    provider = (cfg.script.provider or "auto").strip().lower()
+    return provider != "offline" and from_offline_bank(script)
 
 
 def _narrate(cfg: Config, script: VideoScript, work: Path, folder: Path) -> tuple[Narration, VideoScript]:

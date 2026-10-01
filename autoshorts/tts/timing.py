@@ -15,6 +15,7 @@ from __future__ import annotations
 import array
 import difflib
 import sys
+import unicodedata
 import wave
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -31,6 +32,12 @@ ABBREVIATIONS = frozenset(
     {"mr.", "mrs.", "ms.", "dr.", "st.", "vs.", "jr.", "sr.", "prof.", "e.g.", "i.e.", "approx.", "no."}
 )
 
+# Chinese/Japanese/Thai are written without spaces between words, so a whole sentence
+# would otherwise be one caption "word". Such runs are cut after punctuation and into
+# chunks of at most this many characters (combining marks stay with their base).
+SCRIPT_CHUNK_CHARS = 6
+_NO_SPACE_BREAKS = "。，、！？；：…・,.!?;:"
+
 # Pause after a token, in the same units as word_weight (~1 unit per letter).
 PAUSE_WEIGHT = {"sentence": 7.0, "clause": 4.0}
 MIN_WORD_SECONDS = 0.08
@@ -43,12 +50,41 @@ def is_speakable(token: str) -> bool:
     return any(ch.isalnum() or ch in SPEAKABLE_SYMBOLS for ch in token)
 
 
+def _unspaced_script(ch: str) -> bool:
+    """CJK (East Asian wide/fullwidth) or Thai: scripts written without word spaces."""
+    return unicodedata.east_asian_width(ch) in ("W", "F") or "\u0e00" <= ch <= "\u0e7f"
+
+
+def _split_unspaced(raw: str) -> list[str]:
+    """A long run of CJK/Thai text in caption-sized pieces (see SCRIPT_CHUNK_CHARS)."""
+    if len(raw) <= SCRIPT_CHUNK_CHARS + 2 or not any(_unspaced_script(c) for c in raw):
+        return [raw]
+    pieces: list[str] = []
+    cur = ""
+    for ch in raw:
+        if cur and unicodedata.category(ch) not in ("Mn", "Mc") and ch not in _NO_SPACE_BREAKS \
+                and not "\u0e40" <= cur[-1] <= "\u0e44" and len(cur) >= SCRIPT_CHUNK_CHARS:  # Thai leading vowels
+            pieces.append(cur)
+            cur = ""
+        cur += ch
+        if ch in _NO_SPACE_BREAKS and is_speakable(cur):
+            pieces.append(cur)
+            cur = ""
+    if cur:
+        if pieces and (not is_speakable(cur) or len(cur) < 3):  # no one-letter leftovers
+            pieces[-1] += cur
+        else:
+            pieces.append(cur)
+    return pieces
+
+
 def display_tokens(text: str) -> list[str]:
     """Whitespace tokens; punctuation-only tokens are merged into the previous word
-    (or the next one when they come first), e.g. "Wait — what?" -> ["Wait —", "what?"]."""
+    (or the next one when they come first), e.g. "Wait — what?" -> ["Wait —", "what?"].
+    Long CJK/Thai runs are split into short pieces (see SCRIPT_CHUNK_CHARS)."""
     tokens: list[str] = []
     prefix = ""
-    for raw in text.split():
+    for raw in (piece for word in text.split() for piece in _split_unspaced(word)):
         if is_speakable(raw):
             tokens.append(f"{prefix} {raw}" if prefix else raw)
             prefix = ""

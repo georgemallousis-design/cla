@@ -15,6 +15,7 @@ import shutil
 import struct
 import subprocess
 import sys
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -39,6 +40,10 @@ ONE_LINE_MAX_WORDS = 3
 OUTRO_TITLE_MIN = 1.0  # an outro at least this long shows the title again as an end card
 POP = r"\fscx80\fscy80\t(0,90,\fscx100\fscy100)"
 FADE = r"\fad(150,250)"
+# Style "Encoding" -1: libass (>= 0.15) runs Unicode bidi with an automatic base direction
+# across override tags. With 1 (VSFilter mode), each run between the per-word colour tags
+# was reordered on its own, scrambling Arabic/Hebrew captions.
+ENCODING = "-1"
 
 FONT_CANDIDATES = {
     "win": ["Arial Black", "Arial"],
@@ -135,7 +140,7 @@ def _fc_families() -> set[str] | None:
     if not fc:
         return None
     try:
-        proc = subprocess.run([fc, ":", "family"], capture_output=True, text=True, timeout=15)
+        proc = subprocess.run([fc, ":", "family"], capture_output=True, encoding="utf-8", errors="replace", timeout=15)
     except (OSError, subprocess.SubprocessError):
         return None
     if proc.returncode != 0:
@@ -208,6 +213,8 @@ def inline_color(hex_color: str) -> str:
 
 def _char_width(ch: str) -> float:
     """Approximate advance of one character in em (bold sans)."""
+    if unicodedata.east_asian_width(ch) in ("W", "F"):  # CJK ideographs, kana, fullwidth: square
+        return 1.0
     if ch == " ":
         return 0.3
     if ch in "iIl1.,;:!'|jft":
@@ -396,12 +403,12 @@ def _header(cfg: Config, lay: _Layout, title: str) -> list[str]:
     caption_style = ",".join([
         "Caption", lay.font, str(lay.font_size), hex_to_ass(cc.primary_color), hex_to_ass(cc.highlight_color),
         hex_to_ass(cc.outline_color), hex_to_ass("#000000", 0x80), "-1", "0", "0", "0", "100", "100", "0", "0",
-        "1", _num(cc.outline * lay.scale), _num(cc.shadow * lay.scale), "5", str(margin), str(margin), "0", "1",
+        "1", _num(cc.outline * lay.scale), _num(cc.shadow * lay.scale), "5", str(margin), str(margin), "0", ENCODING,
     ])
     title_style = ",".join([
         "Title", lay.font, str(lay.title_size), hex_to_ass("#FFFFFF"), hex_to_ass("#FFFFFF"),
         hex_to_ass("#000000", 0x60), hex_to_ass("#000000", 0xFF), "-1", "0", "0", "0", "100", "100", "0", "0",
-        "3", _num(max(1.0, 16 * lay.scale)), "0", "5", str(margin), str(margin), "0", "1",
+        "3", _num(max(1.0, 16 * lay.scale)), "0", "5", str(margin), str(margin), "0", ENCODING,
     ])
     return [
         "[Script Info]",
@@ -427,9 +434,23 @@ def _dialogue(layer: int, start_cs: int, end_cs: int, style: str, text: str) -> 
     return f"Dialogue: {layer},{ass_time(start_cs / 100)},{ass_time(end_cs / 100)},{style},,0,0,0,,{text}"
 
 
-def _display_word(word: str, upper: bool) -> str:
+def upper_for(text: str, language: str = "en") -> str:
+    """All caps the way ``language`` writes them: Turkish/Azeri dotted i -> İ (dotless ı -> I),
+    Greek capitals without the tonos/dialytika accents ('ήλιος' -> 'ΗΛΙΟΣ')."""
+    lang = (language or "").lower().split("-")[0].split("_")[0]
+    if lang in ("tr", "az"):
+        text = text.replace("i", "İ").replace("ı", "I")
+    text = text.upper()
+    if lang == "el":
+        text = unicodedata.normalize(
+            "NFC", "".join(c for c in unicodedata.normalize("NFD", text) if c not in "\u0301\u0308\u0344")
+        )
+    return text
+
+
+def _display_word(word: str, upper: bool, language: str = "en") -> str:
     text = clean_for_speech(word)
-    return text.upper() if upper else text
+    return upper_for(text, language) if upper else text
 
 
 def _one_line_fit(cfg: Config, lay: _Layout) -> Callable[[str], bool]:
@@ -440,9 +461,10 @@ def _one_line_fit(cfg: Config, lay: _Layout) -> Callable[[str], bool]:
     """
     max_w = lay.width * MAX_TEXT_WIDTH
     upper = cfg.captions.uppercase
+    language = cfg.script.language
 
     def fits(text: str) -> bool:
-        shown = " ".join(_display_word(w, upper) for w in text.split())
+        shown = " ".join(_display_word(w, upper, language) for w in text.split())
         return text_width(shown, lay.font_size) <= max_w
 
     return fits
@@ -450,7 +472,7 @@ def _one_line_fit(cfg: Config, lay: _Layout) -> Callable[[str], bool]:
 
 def _caption_events(cfg: Config, lay: _Layout, cap: Caption) -> list[str]:
     cc = cfg.captions
-    texts = [_display_word(w.word, cc.uppercase) for w in cap.words]
+    texts = [_display_word(w.word, cc.uppercase, cfg.script.language) for w in cap.words]
     keep = [i for i, t in enumerate(texts) if t]
     if not keep:
         return []

@@ -3,6 +3,7 @@ backgrounds (real low-res ffmpeg renders) and shot planning (fake providers)."""
 from __future__ import annotations
 
 import json
+import logging
 import os
 import shutil
 import subprocess
@@ -195,6 +196,15 @@ def test_simplify_query():
 
 
 # --------------------------------------------------------------------------- pexels
+
+
+def test_rendition_key_avoids_4k_when_a_smaller_good_file_exists():
+    def best(files):
+        return min(files, key=lambda f: rendition_key(*f, 1080, 1920))
+
+    assert best([(3840, 2160), (2560, 1440), (1920, 1080)]) == (2560, 1440)
+    assert best([(2160, 3840), (1440, 2560), (1080, 1920)]) == (1080, 1920)
+    assert best([(3840, 2160), (1280, 720)]) == (3840, 2160)  # still better than a tiny file
 
 
 def test_pexels_best_file_skips_hls_and_prefers_portrait():
@@ -394,6 +404,33 @@ def test_pixabay_without_key_or_on_error(cfg, monkeypatch):
     assert len(prov._session.api_calls) == 1
 
 
+def test_pixabay_connection_error_does_not_log_the_key(cfg, monkeypatch, caplog):
+    """Pixabay's key is a query parameter, and requests puts the URL into ConnectionError."""
+    monkeypatch.setenv("PIXABAY_API_KEY", "SECRET_PIXABAY_KEY_123")
+    prov = PixabayProvider(cfg)
+
+    def refuse(params):
+        query = "&".join(f"{k}={v}" for k, v in params.items())
+        return requests.ConnectionError(
+            "HTTPSConnectionPool(host='pixabay.com', port=443): Max retries exceeded with url: "
+            f"/api/videos/?{query} (Caused by NewConnectionError('refused'))")
+
+    prov._session = FakeSession(refuse, pixabay.API_URL)
+    with caplog.at_level(logging.DEBUG, logger="autoshorts"):
+        assert prov.search("ocean waves", 4, 1) == []
+    assert "Pixabay search for 'ocean waves' failed" in caplog.text
+    assert "SECRET_PIXABAY_KEY_123" not in caplog.text
+    assert "key=***" in caplog.text
+
+
+def test_short_error_masks_credential_query_values():
+    from autoshorts.visuals import short_error
+
+    exc = requests.ConnectionError("Max retries exceeded with url: /v/?upload_id=1&upload_token=TOK&key=K2 (x)")
+    text = short_error(exc)
+    assert "TOK" not in text and "K2" not in text and "upload_id=1" in text
+
+
 # --------------------------------------------------------------------------- local
 
 
@@ -417,17 +454,20 @@ def durations(monkeypatch):
     table: dict[str, float | Exception] = {}
     calls: list[str] = []
     local._DURATIONS.clear()
+    local._DECODES.clear()
 
     def fake(path):
         calls.append(Path(path).name)
         value = table.get(Path(path).name, 10.0)
         if isinstance(value, Exception):
             raise value
-        return value
+        return {"duration": value, "width": 1080, "height": 1920, "color_transfer": ""}
 
-    monkeypatch.setattr(local, "media_duration", fake)
+    monkeypatch.setattr(local, "probe_video", fake)
+    monkeypatch.setattr(local, "decodes", lambda path: True)
     yield table, calls
     local._DURATIONS.clear()
+    local._DECODES.clear()
 
 
 def test_local_scan_skips_hidden_and_non_media(cfg, local_dir):
@@ -565,6 +605,59 @@ def test_generated_falls_back_to_portable_style(small_video, monkeypatch, tmp_pa
     look = generated.Look("gradient", generated.PALETTES[1], 9, 1.0, 0)
     out = generated.render_look(look, tmp_path / "g.mp4", 216, 384, 15, 4.0)
     assert out.exists() and probe(out)["streams"][0]["width"] == 216
+
+
+def test_generated_timeout_falls_back_and_leaves_no_temp_file(monkeypatch, tmp_path):
+    """A timeout (now an AutoShortsError from run_ffmpeg) must try the portable style, and
+    a half-written .tmp.mp4 must never stay in the cache."""
+    styles = []
+
+    def fake_run(args, desc="", timeout=None, cwd=None):
+        styles.append(desc)
+        Path(args[-1]).write_bytes(b"partial")
+        raise AutoShortsError(f"{desc} timed out after {timeout:.0f}s")
+
+    monkeypatch.setattr(generated, "run_ffmpeg", fake_run)
+    look = generated.Look("nebula", generated.PALETTES[0], 3, 1.0, 0)
+    with pytest.raises(AutoShortsError, match="timed out"):
+        generated.render_look(look, tmp_path / "g.mp4", 216, 384, 15, 4.0)
+    assert len(styles) == 2 and generated.FALLBACK_STYLE in styles[1]
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_run_ffmpeg_converts_timeout(monkeypatch):
+    def slow(*a, **kw):
+        raise subprocess.TimeoutExpired(cmd="ffmpeg", timeout=kw.get("timeout"))
+
+    monkeypatch.setattr(utils, "require_binary", lambda name: name)
+    monkeypatch.setattr(utils.subprocess, "run", slow)
+    with pytest.raises(AutoShortsError, match="shot 3 timed out after 5s"):
+        utils.run_ffmpeg(["-i", "x"], desc="shot 3", timeout=5)
+
+
+def test_ffprobe_output_is_decoded_as_utf8(monkeypatch):
+    """On Windows the locale code page (cp1252/cp1253) cannot decode the UTF-8 file names
+    ffprobe prints; text=True without an encoding crashed every video in C:\\Users\\Γιώργος."""
+    raw = json.dumps({"format": {"filename": "C:\\Users\\Γιώργος\\seg_00.mp3", "duration": "2.5"},
+                      "streams": [{"codec_type": "audio", "tags": {"title": "Μαρία ♪"}}]},
+                     ensure_ascii=False).encode("utf-8")
+
+    def fake_run(cmd, **kw):
+        encoding = kw.get("encoding") or ("cp1253" if kw.get("text") else None)
+        out = raw.decode(encoding, kw.get("errors") or "strict") if encoding else raw
+        return subprocess.CompletedProcess(cmd, 0, out, "" if encoding else b"")
+
+    monkeypatch.setattr(utils, "require_binary", lambda name: name)
+    monkeypatch.setattr(utils.subprocess, "run", fake_run)
+    assert utils.media_duration("seg_00.mp3") == 2.5
+    assert "Γιώργος" in utils.ffprobe_json("x")["format"]["filename"]
+
+
+def test_ffprobe_garbage_output_is_an_autoshorts_error(monkeypatch):
+    monkeypatch.setattr(utils, "require_binary", lambda name: name)
+    monkeypatch.setattr(utils.subprocess, "run", lambda cmd, **kw: subprocess.CompletedProcess(cmd, 0, "{oops", ""))
+    with pytest.raises(AutoShortsError, match="unreadable output"):
+        utils.media_duration("x.mp4")
 
 
 @needs_ffmpeg

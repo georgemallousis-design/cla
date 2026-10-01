@@ -30,7 +30,7 @@ from typing import Sequence
 
 from .config import Config
 from .models import ClipAsset, Narration, RenderResult
-from .utils import AutoShortsError, ensure_dir, log, media_duration, run_ffmpeg
+from .utils import AutoShortsError, ensure_dir, log, media_duration, probe_video, run_ffmpeg, video_frame_count
 from .visuals import Shot
 
 TAIL_SECONDS = 0.4  # the video keeps running this long after the voice ends
@@ -60,6 +60,14 @@ LIMITER = "alimiter=limit=0.95:level=0"  # level=0: limit peaks, don't re-normal
 # TikTok, before mixing, so music.volume really is "relative to the voice". loudnorm works
 # at 192 kHz internally, hence the resample back to 48 kHz.
 VOICE_LOUDNESS = "loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000"
+# HLG/PQ (HDR, BT.2020) phone footage: tone-mapped to SDR BT.709 when zscale is available.
+HDR_TRANSFERS = frozenset({"smpte2084", "arib-std-b67"})
+TONEMAP = ("zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=hable:desat=0,"
+           "zscale=t=bt709:m=bt709:r=tv,format=yuv420p")
+# Timeouts (seconds) so a broken input can never hang a run: a short clip whose video
+# data does not decode loops forever under -stream_loop -1 without ever reaching -frames:v.
+SHOT_TIMEOUT_MIN, SHOT_TIMEOUT_PER_SECOND = 120.0, 30.0
+FINAL_TIMEOUT_MIN, FINAL_TIMEOUT_PER_SECOND = 600.0, 20.0
 COLOR_ARGS = ["-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv"]
 
 
@@ -115,9 +123,13 @@ def is_image(clip: ClipAsset) -> bool:
 
 
 def cover_filter(width: int, height: int) -> str:
-    """Scale up until the frame is filled, then centre-crop to exactly width x height."""
+    """Scale up until the frame is filled, then centre-crop to exactly width x height.
+
+    The colour matrix is converted to BT.709 (what every shot is tagged as), so SD
+    BT.601 sources keep their hues; the input matrix comes from the frame's own tags.
+    """
     return (
-        f"scale={width}:{height}:force_original_aspect_ratio=increase:out_range=tv,"
+        f"scale={width}:{height}:force_original_aspect_ratio=increase:out_color_matrix=bt709:out_range=tv,"
         f"crop={width}:{height},setsar=1"
     )
 
@@ -150,16 +162,20 @@ def fade_in_filter(fps: int, seconds: float = FIRST_FADE_SECONDS) -> str:
 
 
 def shot_filter(
-    image: bool, width: int, height: int, fps: int, frames: int, *, zoom_in: bool = True, fade_in: bool = False
+    image: bool, width: int, height: int, fps: int, frames: int, *, zoom_in: bool = True, fade_in: bool = False,
+    tonemap: bool = False,
 ) -> str:
-    """-vf chain that turns one source into a ``frames``-long, output-sized yuv420p shot."""
+    """-vf chain that turns one source into a ``frames``-long, output-sized yuv420p shot.
+
+    ``tonemap`` converts HDR (PQ/HLG, BT.2020) video to SDR BT.709 first (needs zscale).
+    """
     if image:
         parts = [ken_burns_filter(width, height, fps, frames, zoom_in)]
     else:
         # tpad freezes the last frame if the source ends early (wrong duration metadata),
         # so every shot really has ``frames`` frames and later shots never drift.
         pad = f"tpad=stop_mode=clone:stop_duration={frames / fps + 1:.3f}"
-        parts = [f"fps={fps}", cover_filter(width, height), pad]
+        parts = [f"fps={fps}", *([TONEMAP] if tonemap else []), cover_filter(width, height), pad]
     if fade_in:
         parts.append(fade_in_filter(fps))
     parts.append("format=yuv420p")
@@ -239,9 +255,11 @@ def build_shot_command(
     fps: int,
     src_duration: float | None = None,
     fade_in: bool = False,
+    tonemap: bool = False,
 ) -> list[str]:
     """ffmpeg args (without 'ffmpeg') rendering one shot of exactly ``frames`` frames."""
-    vf = shot_filter(is_image(clip), width, height, fps, frames, zoom_in=index % 2 == 0, fade_in=fade_in)
+    vf = shot_filter(is_image(clip), width, height, fps, frames, zoom_in=index % 2 == 0, fade_in=fade_in,
+                     tonemap=tonemap)
     return [
         *shot_input_args(clip, index, frames / fps, src_duration),
         "-map", "0:v:0", "-vf", vf, "-frames:v", str(frames),
@@ -312,30 +330,82 @@ def build_final_command(
 # --------------------------------------------------------------------------- passes
 
 
-def _source_duration(clip: ClipAsset) -> float | None:
-    """Real length of a video file (probed; provider metadata can be off), None if unknown."""
+def shot_timeout(seconds: float) -> float:
+    return max(SHOT_TIMEOUT_MIN, SHOT_TIMEOUT_PER_SECOND * seconds)
+
+
+def final_timeout(seconds: float) -> float:
+    return max(FINAL_TIMEOUT_MIN, FINAL_TIMEOUT_PER_SECOND * seconds)
+
+
+_ZSCALE: list[bool] = []  # cached "ffmpeg has zscale" answer
+
+
+def _has_zscale() -> bool:
+    if not _ZSCALE:
+        try:
+            run_ffmpeg(["-f", "lavfi", "-i", "color=s=16x16:d=0.04", "-vf", "zscale", "-f", "null", "-"],
+                       desc="zscale check", timeout=30)
+            _ZSCALE.append(True)
+        except AutoShortsError:
+            _ZSCALE.append(False)
+    return _ZSCALE[0]
+
+
+def _source_info(clip: ClipAsset) -> tuple[float | None, bool]:
+    """(length of the video stream, is HDR) of a video file; (None, False) for images.
+
+    The video stream's own duration is used, not the format's: in a file whose audio
+    outlasts the picture, an offset chosen from the format duration can land past the
+    last video frame and produce an empty shot. Provider metadata is the fallback.
+    """
     if is_image(clip):
-        return None
+        return None, False
     try:
-        return media_duration(clip.path)
+        info = probe_video(clip.path)
     except AutoShortsError:
-        return float(clip.duration) if clip.duration and clip.duration > 0 else None
+        return (float(clip.duration) if clip.duration and clip.duration > 0 else None), False
+    return info["duration"], info["color_transfer"] in HDR_TRANSFERS
+
+
+def _source_duration(clip: ClipAsset) -> float | None:
+    """Real length of a video file's picture (probed; provider metadata can be off), None if unknown."""
+    return _source_info(clip)[0]
+
+
+def _shot_ok(out_path: Path, frames: int) -> bool:
+    """ffmpeg exits 0 even when a seek lands past the last video packet and it writes an
+    mp4 without a video stream; the concat demuxer would then silently drop that shot."""
+    try:
+        count = video_frame_count(out_path)
+    except AutoShortsError:
+        return False
+    return count is not None and count >= max(1, frames - 1)
 
 
 def _render_shot(cfg: Config, index: int, clip: ClipAsset, frames: int, out_path: Path) -> Path:
     v = cfg.video
-    common = dict(frames=frames, width=v.width, height=v.height, fps=int(round(v.fps)), fade_in=index == 0)
+    fps = int(round(v.fps))
+    common = dict(frames=frames, width=v.width, height=v.height, fps=fps, fade_in=index == 0)
+    timeout = shot_timeout(frames / fps)
     src = Path(clip.path)
     if src.is_file():
-        args = build_shot_command(clip, out_path, index=index, src_duration=_source_duration(clip), **common)
+        src_duration, hdr = _source_info(clip)
+        tonemap = hdr and _has_zscale()
+        if hdr and not tonemap:
+            log.warning("shot %d: %s is HDR video but this FFmpeg has no zscale filter; colours will look "
+                        "washed out (use an FFmpeg build with zimg, or an SDR clip)", index, src.name)
+        args = build_shot_command(clip, out_path, index=index, src_duration=src_duration, tonemap=tonemap, **common)
         try:
-            run_ffmpeg(args, desc=f"shot {index} ({src.name})")
-            return out_path
+            run_ffmpeg(args, desc=f"shot {index} ({src.name})", timeout=timeout)
+            if _shot_ok(out_path, frames):
+                return out_path
+            log.warning("shot %d: %s produced no usable frames, using a plain background instead", index, src)
         except AutoShortsError as exc:
             log.warning("shot %d: could not use %s, using a plain background instead. %s", index, src, exc)
     else:
         log.warning("shot %d: clip file not found (%s), using a plain background", index, src)
-    run_ffmpeg(build_fallback_command(out_path, **common), desc=f"shot {index} (fallback)")
+    run_ffmpeg(build_fallback_command(out_path, **common), desc=f"shot {index} (fallback)", timeout=timeout)
     return out_path
 
 
@@ -360,7 +430,7 @@ def render_shots(cfg: Config, plan: Sequence[tuple[Shot, int]], workdir: Path) -
     return outs
 
 
-def concat_shots(files: Sequence[Path], out_path: Path) -> Path:
+def concat_shots(files: Sequence[Path], out_path: Path, timeout: float | None = None) -> Path:
     """Join same-format shots without re-encoding (concat demuxer, run inside out_path's folder)."""
     folder = out_path.parent
     names: list[str | PurePath] = [
@@ -370,7 +440,7 @@ def concat_shots(files: Sequence[Path], out_path: Path) -> Path:
     list_path.write_text(concat_list_text(names), encoding="utf-8", newline="\n")
     run_ffmpeg(
         ["-f", "concat", "-safe", "0", "-i", list_path.name, "-map", "0:v:0", "-c", "copy", "-an", out_path.name],
-        desc="concat shots", cwd=folder,
+        desc="concat shots", cwd=folder, timeout=timeout,
     )
     return out_path
 
@@ -446,16 +516,28 @@ def render_video(
     work = Path(tempfile.mkdtemp(prefix="autoshorts-render-")) if own_work else ensure_dir(workdir)
     try:
         plan = shot_frames(shots, total, int(round(cfg.video.fps)))
-        background = concat_shots(render_shots(cfg, plan, work), work / "background.mp4")
+        background = concat_shots(render_shots(cfg, plan, work), work / "background.mp4",
+                                  timeout=shot_timeout(total))
         ass_name = _stage_subtitles(ass_path, work)
         fonts = _stage_fonts(cfg, work) if ass_name else None
-        args = build_final_command(
-            cfg, background=background.name, narration_audio=voice, out_path=tmp_out,
-            duration=total, ass_name=ass_name, fonts_dir=fonts, music_path=music,
-        )
-        log.info("final render: %.1f s, captions=%s, music=%s", total, bool(ass_name),
-                 music.name if music else "none")
-        run_ffmpeg(args, desc="final render", cwd=work)
+
+        def final_pass(music_file: Path | None) -> None:
+            args = build_final_command(
+                cfg, background=background.name, narration_audio=voice, out_path=tmp_out,
+                duration=total, ass_name=ass_name, fonts_dir=fonts, music_path=music_file,
+            )
+            log.info("final render: %.1f s, captions=%s, music=%s", total, bool(ass_name),
+                     music_file.name if music_file else "none")
+            run_ffmpeg(args, desc="final render", cwd=work, timeout=final_timeout(total))
+
+        try:
+            final_pass(music)
+        except AutoShortsError as exc:
+            if music is None:
+                raise
+            # A broken track (empty, truncated, no samples) must not cost the whole video.
+            log.warning("final render with music %s failed; rendering again without music. %s", music.name, exc)
+            final_pass(None)
         os.replace(tmp_out, out_path)
     finally:
         tmp_out.unlink(missing_ok=True)
@@ -477,6 +559,6 @@ def make_thumbnail(video_path: str | Path, out_path: str | Path, at: float = 1.0
     when = max(0.0, min(at, duration / 2)) if duration > 0 else 0.0
     run_ffmpeg(
         ["-ss", f"{when:.3f}", "-i", str(video_path), "-frames:v", "1", "-q:v", "2", str(out_path)],
-        desc="thumbnail",
+        desc="thumbnail", timeout=SHOT_TIMEOUT_MIN,
     )
     return out_path

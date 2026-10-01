@@ -14,6 +14,10 @@ in which case the least-recently used topic comes back.
 
 ``next()`` never marks a topic as used; the pipeline calls ``mark_used()`` after a
 successful render, so a failed video does not burn its topic.
+
+An unreadable state file (truncated by a crash, a bad hand edit) is moved aside to
+``<state>.corrupt-<timestamp>`` before anything is written, so the old history is never
+overwritten and can be repaired by hand.
 """
 from __future__ import annotations
 
@@ -79,13 +83,19 @@ def _now() -> str:
 
 
 def write_json_atomic(path: Path, data: object) -> None:
-    """Write JSON to a temp file next to ``path`` and rename it over ``path``."""
+    """Write JSON to a temp file next to ``path`` and rename it over ``path``.
+
+    The data is flushed to disk before the rename, so a power loss or VPS crash leaves
+    either the old or the new file, never an empty one.
+    """
     ensure_dir(path.parent)
     tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
     try:
         with open(tmp, "w", encoding="utf-8") as fh:
             json.dump(data, fh, indent=2, ensure_ascii=False)
             fh.write("\n")
+            fh.flush()
+            os.fsync(fh.fileno())
         os.replace(tmp, path)
     except BaseException:
         tmp.unlink(missing_ok=True)
@@ -100,6 +110,7 @@ class TopicQueue:
         self.file = cfg.path(cfg.topics.file)
         self.state_file = cfg.path(cfg.topics.state_file)
         self.rng = rng or random.Random()
+        self._unreadable = False  # the state file exists but could not be read or moved aside
 
     # ----------------------------------------------------------------- reading
 
@@ -109,6 +120,7 @@ class TopicQueue:
 
     def used(self) -> dict[str, str]:
         """{topic key: ISO timestamp of when it was used}."""
+        self._unreadable = False
         if not self.state_file.is_file():
             return {}
         try:
@@ -117,10 +129,23 @@ class TopicQueue:
             if not isinstance(used, dict):
                 raise ValueError("'used' is not a mapping")
         except (OSError, ValueError) as exc:
-            log.warning("topic history %s is unreadable (%s); treating every topic as unused",
-                        self.state_file, exc)
+            self._quarantine(exc)
             return {}
         return {topic_key(k): str(v) for k, v in used.items()}
+
+    def _quarantine(self, exc: Exception) -> None:
+        """Move an unreadable state file aside so mark_used() can never overwrite it."""
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+        aside = self.state_file.with_name(f"{self.state_file.name}.corrupt-{stamp}")
+        try:
+            os.replace(self.state_file, aside)
+        except OSError as move_exc:
+            self._unreadable = True
+            log.warning("topic history %s is unreadable (%s) and could not be moved aside (%s); "
+                        "treating every topic as unused for now", self.state_file, exc, move_exc)
+            return
+        log.warning("topic history %s was unreadable (%s); moved it to %s (repair it by hand and move it "
+                    "back to keep the history); treating every topic as unused", self.state_file, exc, aside.name)
 
     def is_used(self, topic: str) -> bool:
         return topic_key(topic) in self.used()
@@ -186,6 +211,10 @@ class TopicQueue:
         if not key:
             return
         used = self.used()
+        if self._unreadable:
+            raise AutoShortsError(
+                f"topic history {self.state_file} is unreadable; fix or delete it (refusing to overwrite it)"
+            )
         used.pop(key, None)  # re-insert so the file also lists topics in usage order
         used[key] = _now()
         write_json_atomic(self.state_file, {"used": used})
