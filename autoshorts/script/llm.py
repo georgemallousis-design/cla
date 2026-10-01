@@ -76,6 +76,13 @@ def extract_json(text: str) -> dict:
     sources = [*fenced, text] if fenced else [text]
     last_error = "no JSON object found in the reply"
     for source in sources:
+        if source.lstrip().startswith("["):  # a bare list of segments
+            try:
+                items = _loads_lenient(source.strip())
+            except json.JSONDecodeError:
+                items = None
+            if isinstance(items, list):
+                return {"segments": items}
         start = source.find("{")
         while start != -1:
             candidate = _balanced_object(source, start)
@@ -282,7 +289,7 @@ class OpenAICompatibleGenerator(LLMGenerator):
         if resp.status_code == 400 and "response_format" in payload:
             log.info("%s rejected JSON mode (%s); retrying without it", ocfg.base_url, _error_text(resp))
             self.json_mode = False
-            payload.pop("response_format")
+            payload = {k: v for k, v in payload.items() if k != "response_format"}
             resp = self._post(url, payload, headers)
         _raise_for_api_status(resp, ocfg.base_url, ocfg.model, ocfg.api_key_env)
         try:

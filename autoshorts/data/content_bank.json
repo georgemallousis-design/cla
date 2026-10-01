@@ -46,7 +46,7 @@
         {"text": "Babies are born with around three hundred bones. Many of them fuse together as we grow, leaving adults with two hundred and six.", "visual_query": "newborn baby"},
         {"text": "The smallest of those bones, the stapes, sits deep inside your ear and is about the size of a grain of rice.", "visual_query": "ear closeup"},
         {"text": "Your stomach acid is so strong that the cells lining your stomach are constantly replaced, every few days.", "visual_query": "microscope cells"},
-        {"text": "Laid end to end, the blood vessels in an adult body would stretch for roughly one hundred thousand kilometers. That's enough to circle the Earth twice.", "visual_query": "earth from space"},
+        {"text": "Meanwhile, your bone marrow makes around two million new red blood cells every second, replacing old ones that wear out after about four months.", "visual_query": "blood cells microscope"},
         {"text": "You are also slightly taller in the morning. During the day, the discs in your spine get squeezed, and you can lose about a centimeter of height.", "visual_query": "measuring height"},
         {"text": "Overnight, while you sleep, they recover. Impossible? No, just your body, every single day. Follow for more body facts.", "visual_query": "sleeping bedroom night"}
       ],
@@ -63,7 +63,7 @@
         {"text": "Woolly mammoths were still alive back then. A small population survived on Wrangel Island, in the Arctic Ocean, until about four thousand years ago.", "visual_query": "arctic tundra"},
         {"text": "Oxford University is older than the Aztec Empire. Teaching there began by 1096, while the Aztec capital was founded in 1325.", "visual_query": "old university building"},
         {"text": "Nintendo was founded in 1889 to make playing cards, the same year the Eiffel Tower opened in Paris.", "visual_query": "playing cards"},
-        {"text": "And the Eiffel Tower was only supposed to stand for twenty years. It was saved partly because it made a perfect radio antenna.", "visual_query": "eiffel tower"},
+        {"text": "And the Eiffel Tower was only supposed to stand for twenty years. It was saved partly because it made such a useful radio antenna.", "visual_query": "eiffel tower"},
         {"text": "The shortest war in recorded history, between Britain and Zanzibar in 1896, was over in less than an hour.", "visual_query": "old sailing ship"},
         {"text": "History is closer, stranger and more tangled than it feels. Follow for more history facts.", "visual_query": "old map"}
       ],
@@ -127,7 +127,7 @@
       "title": "Real Animal Superpowers That Sound Like Sci-Fi",
       "segments": [
         {"text": "Some animals have powers straight out of science fiction.", "visual_query": "wildlife nature"},
-        {"text": "Tardigrades, tiny animals less than a millimeter long, can survive years of drying out, extreme cold, and even the vacuum of space.", "visual_query": "microscope view"},
+        {"text": "Tardigrades, tiny animals about half a millimeter long, can survive years of drying out, extreme cold, and even the vacuum of space.", "visual_query": "microscope view"},
         {"text": "The wood frog can freeze almost solid in winter. Its heart stops beating, and in spring it thaws out and hops away.", "visual_query": "frog forest"},
         {"text": "Axolotls can regrow lost legs, parts of their heart, and even parts of their spinal cord.", "visual_query": "axolotl aquarium"},
         {"text": "A mantis shrimp punches so fast that the water around its club forms bubbles, and when they collapse, they hit the prey with a second shockwave.", "visual_query": "mantis shrimp"},
@@ -150,7 +150,7 @@
         {"text": "Sunlight fades fast. Below about a thousand meters, the ocean is in total, permanent darkness.", "visual_query": "dark water"},
         {"text": "So many deep sea animals make their own light, a trick called bioluminescence, to hunt, hide and find each other.", "visual_query": "jellyfish glowing"},
         {"text": "Around hydrothermal vents, whole ecosystems live without any sunlight, fed by microbes that turn chemicals from the vents into energy.", "visual_query": "underwater bubbles"},
-        {"text": "And tiny ocean plants and algae make about half of the oxygen we breathe. Thank the ocean for your next breath. Follow for more.", "visual_query": "ocean surface sunlight"}
+        {"text": "And scientists estimate that tiny ocean organisms called phytoplankton make about half of Earth's oxygen. Thank the ocean for your next breath. Follow for more.", "visual_query": "ocean surface sunlight"}
       ],
       "description": "Unmapped seafloors, crushing pressure and glowing animals: facts about the deep ocean that sound unreal.",
       "hashtags": ["ocean", "deepsea", "marinelife", "nature", "facts", "science"]
@@ -304,7 +304,7 @@
       "segments": [
         {"text": "How well do you really know your own body?", "visual_query": "human anatomy model"},
         {"text": "Question one: what is the largest organ of the human body? Three, two, one.", "visual_query": "doctor anatomy"},
-        {"text": "Your skin. On an average adult it covers about two square meters, and it's constantly renewing itself.", "visual_query": "hands closeup"},
+        {"text": "Your skin. On an adult it covers up to about two square meters, and it's constantly renewing itself.", "visual_query": "hands closeup"},
         {"text": "Question two: how many bones does an adult human have? Three, two, one.", "visual_query": "skeleton model"},
         {"text": "Two hundred and six. And more than half of them are in your hands and feet.", "visual_query": "x ray hand"},
         {"text": "Question three: where is the smallest bone in your body? Three, two, one.", "visual_query": "human ear"},

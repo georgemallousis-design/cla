@@ -238,6 +238,24 @@ def test_build_ass_wraps_and_shrinks_long_text(tmp_path):
     assert crowded.count("\\N") == 1 and re.search(r"\\fs\d+", crowded)  # never more than two lines
 
 
+def test_group_captions_fits_predicate_limits_chunks():
+    ws = words_from("Venus takes about 243 Earth days")
+    narrow = group_captions(ws, [0.0], 3, 20, fits=lambda text: len(text) <= 11)
+    assert [[w.word for w in c.words] for c in narrow] == [["Venus", "takes"], ["about", "243"], ["Earth", "days"]]
+    # a single word is always allowed, even when it does not "fit"
+    assert [len(c.words) for c in group_captions(ws, [0.0], 3, 20, fits=lambda text: False)] == [1] * 6
+
+
+def test_build_ass_short_captions_stay_on_one_line(tmp_path):
+    cfg = Config()
+    cfg.captions.font = "X"  # defaults: 3 words, 20 chars, 88 px on 1080 wide
+    nar, script = make_narration("Venus takes about two hundred forty three Earth days to spin once")
+    caps = events(build_ass(cfg, nar, script, tmp_path / "c.ass").read_text(encoding="utf-8"), "Caption")
+    assert caps and all("\\N" not in text and not re.search(r"\\fs\d+", text) for _, _, text in caps)
+    shown = {re.sub(r"\{[^}]*\}", "", text) for _, _, text in caps}
+    assert "VENUS TAKES ABOUT" not in shown  # estimated wider than 85% of the frame at 88 px
+
+
 def test_build_ass_without_words_has_only_title(tmp_path):
     cfg = Config()
     cfg.captions.font = "X"

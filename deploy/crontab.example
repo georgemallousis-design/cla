@@ -1,0 +1,20 @@
+# cron alternative to the systemd timer (use one or the other, not both).
+#
+# Install for the service user created by deploy/install.sh (this REPLACES that
+# user's crontab, which is empty on a fresh install):
+#   sudo crontab -u autoshorts /opt/autoshorts/deploy/crontab.example
+# or add the lines by hand:  sudo crontab -u autoshorts -e
+# Check:  sudo crontab -u autoshorts -l      Log:  /opt/autoshorts/output/cron.log
+#
+# Adjust /opt/autoshorts if the repo lives elsewhere. Times are server local time
+# (see `timedatectl`). flock skips a run while the previous one is still busy.
+
+SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/bin:/bin
+
+# m  h       dom mon dow  command
+0    8,14,20 *   *   *    cd /opt/autoshorts && mkdir -p output && flock -n output/.cron.lock .venv/bin/autoshorts batch -n 1 --upload youtube >> output/cron.log 2>&1
+
+# Optional, TikTok: renew the tokens in .env once a week (autoshorts already renews the
+# 24-hour access token in memory; this also saves a rotated refresh token).
+# 30   3       *   *   1    cd /opt/autoshorts && .venv/bin/python deploy/tiktok_token.py --refresh >> output/cron.log 2>&1

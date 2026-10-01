@@ -1,8 +1,8 @@
 """Offline script generator: picks a hand-written script from data/content_bank.json.
 
 No network, no API keys. The bank holds fact-checked, evergreen scripts for every
-format. A topic is matched by word overlap with each entry's topic, title and
-hashtags; unknown topics get a random entry of the requested format. Recently used
+format. A topic is matched by word overlap with each entry's topic, title, hashtags
+and text; unknown topics get a random entry of the requested format. Recently used
 entries are remembered in ``<state>/offline_used.json`` so batches do not repeat.
 """
 from __future__ import annotations
@@ -19,11 +19,18 @@ from ..config import Config
 from ..models import VideoScript
 from ..utils import AutoShortsError, ensure_dir, log
 from . import ScriptGenerator, resolve_format
-from .validate import STOPWORDS, target_words, validate_script
+from .validate import STOPWORDS, script_words, target_words, validate_script
 
 BANK_PATH = Path(__file__).resolve().parent.parent / "data" / "content_bank.json"
 STATE_FILE = "offline_used.json"
 MAX_REMEMBERED = 100
+
+# Words that say nothing about the subject ("crazy space facts" is about "space").
+GENERIC_WORDS = frozenset(
+    """fact facts story stories quiz quizzes trivia question questions motivation motivational
+    explainer explained explain video videos short shorts tiktok youtube viral cool amazing crazy
+    weird fun interesting random top best thing things know learn did true real""".split()
+)
 
 
 @lru_cache(maxsize=4)
@@ -49,14 +56,6 @@ def _stem(word: str) -> str:
         if len(word) > len(suffix) + 2 and word.endswith(suffix):
             return word[: -len(suffix)] + ("y" if suffix == "ies" else "")
     return word
-
-
-# Words that say nothing about the subject ("crazy space facts" is about "space").
-GENERIC_WORDS = frozenset(
-    """fact facts story stories quiz quizzes trivia question questions motivation motivational
-    explainer explained explain video videos short shorts tiktok youtube viral cool amazing crazy
-    weird fun interesting random top best thing things know learn did true real""".split()
-)
 
 
 def tokens(text: str) -> set[str]:
@@ -161,7 +160,7 @@ class OfflineGenerator(ScriptGenerator):
             language="en",
             min_ratio=0.0,  # hand-written scripts are never rejected for length
         )
-        words = sum(len(s.text.split()) for s in script.segments)
+        words = script_words(script.segments)
         if words < 0.8 * target:
             log.info("offline script has %d words (target %d); the video will be shorter than planned", words, target)
         self._remember(entry.get("title", ""))

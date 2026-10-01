@@ -14,3 +14,6 @@ secrets/
 *.mp3
 *.wav
 !assets/**/.gitkeep
+build/
+dist/
+samples_tmp/

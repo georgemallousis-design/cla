@@ -1,0 +1,22 @@
+# systemd timer: runs autoshorts.service three times a day (server local time).
+#
+#   sudo systemctl enable --now autoshorts.timer
+#   systemctl list-timers autoshorts.timer        # next run
+#   sudo systemctl disable --now autoshorts.timer # stop scheduling
+#
+# Check the server's time zone with `timedatectl` (change it with
+# `sudo timedatectl set-timezone Europe/London`), or edit the times below.
+
+[Unit]
+Description=Run autoshorts three times a day
+
+[Timer]
+OnCalendar=*-*-* 08,14,20:00:00
+# Spread the start over 20 minutes so uploads do not land at the exact same minute daily.
+RandomizedDelaySec=20min
+# If the server was off at a scheduled time, run once soon after it boots.
+Persistent=true
+Unit=autoshorts.service
+
+[Install]
+WantedBy=timers.target

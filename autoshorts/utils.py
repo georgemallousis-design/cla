@@ -52,11 +52,21 @@ def require_binary(name: str) -> str:
     return found
 
 
-def run_ffmpeg(args: Sequence[str | Path], *, desc: str = "ffmpeg", timeout: float | None = None) -> None:
-    """Run ffmpeg with ``args`` (without the leading 'ffmpeg'). Raises AutoShortsError on failure."""
+def run_ffmpeg(
+    args: Sequence[str | Path],
+    *,
+    desc: str = "ffmpeg",
+    timeout: float | None = None,
+    cwd: str | Path | None = None,
+) -> None:
+    """Run ffmpeg with ``args`` (without the leading 'ffmpeg'). Raises AutoShortsError on failure.
+
+    ``cwd`` runs ffmpeg inside that folder, so filter arguments can name files there by a
+    bare relative name (avoids filter-path escaping trouble with Windows drive letters).
+    """
     cmd = [require_binary("ffmpeg"), "-hide_banner", "-loglevel", "error", "-y", *map(str, args)]
     log.debug("%s: %s", desc, " ".join(cmd))
-    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    proc = subprocess.run(cmd, capture_output=True, text=True, errors="replace", timeout=timeout, cwd=cwd)
     if proc.returncode != 0:
         tail = "\n".join((proc.stderr or "").strip().splitlines()[-15:])
         raise AutoShortsError(f"{desc} failed (exit {proc.returncode}):\n{tail}")

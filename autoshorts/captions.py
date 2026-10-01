@@ -17,6 +17,7 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
 from .config import Config
 from .models import Narration, VideoScript, WordTiming
@@ -32,6 +33,9 @@ TITLE_SIZE = 0.6  # title font size relative to the caption font size
 MAX_GAP = 0.6  # a caption stays up until the next one unless the pause is longer than this
 HOLD = 0.3  # ... then it disappears this long after its last word
 LONG_PAUSE = 0.6  # a silence this long inside a phrase starts a new caption
+# Captions of up to this many words are kept on one line (short, punchy style); longer
+# ones may wrap to two lines.
+ONE_LINE_MAX_WORDS = 3
 POP = r"\fscx80\fscy80\t(0,90,\fscx100\fscy100)"
 FADE = r"\fad(150,250)"
 
@@ -281,14 +285,23 @@ def _phrases(words: list[WordTiming], seg_starts: list[float]) -> list[list[Word
     return phrases
 
 
-def _split_balanced(phrase: list[WordTiming], max_words: int, max_chars: int) -> list[list[WordTiming]]:
+def _split_balanced(
+    phrase: list[WordTiming], max_words: int, max_chars: int, fits: Callable[[str], bool] | None = None
+) -> list[list[WordTiming]]:
     """Fewest chunks with <= max_words words and <= max_chars characters each (a single
-    over-long word gets a chunk of its own); among those, the most evenly sized."""
+    over-long word gets a chunk of its own); among those, the most evenly sized.
+    ``fits(text)``, when given, must also accept every multi-word chunk (e.g. "fits on
+    one line at the caption font size")."""
     texts = [w.word for w in phrase]
     n = len(texts)
 
     def chars(i: int, j: int) -> int:
         return len(" ".join(texts[i:j]))
+
+    def too_big(i: int, j: int) -> bool:
+        if j - i <= 1:
+            return False
+        return chars(i, j) > max_chars or (fits is not None and not fits(" ".join(texts[i:j])))
 
     # best[j]: (chunks, sum of squared word counts, sum of squared lengths, start of last chunk)
     best: list[tuple[int, int, int, int] | None] = [None] * (n + 1)
@@ -296,7 +309,7 @@ def _split_balanced(phrase: list[WordTiming], max_words: int, max_chars: int) ->
     for j in range(1, n + 1):
         for i in range(max(0, j - max_words), j):
             prev = best[i]
-            if prev is None or (j - i > 1 and chars(i, j) > max_chars):
+            if prev is None or too_big(i, j):
                 continue
             cand = (prev[0] + 1, prev[1] + (j - i) ** 2, prev[2] + chars(i, j) ** 2, i)
             if best[j] is None or cand[:3] < best[j][:3]:  # type: ignore[index]
@@ -311,12 +324,25 @@ def _split_balanced(phrase: list[WordTiming], max_words: int, max_chars: int) ->
 
 
 def group_captions(
-    words: list[WordTiming], seg_starts: list[float], max_words: int, max_chars: int, end_limit: float | None = None
+    words: list[WordTiming],
+    seg_starts: list[float],
+    max_words: int,
+    max_chars: int,
+    end_limit: float | None = None,
+    fits: Callable[[str], bool] | None = None,
 ) -> list[Caption]:
-    """Group words into timed captions (see module docstring for the rules)."""
+    """Group words into timed captions.
+
+    A caption never crosses a sentence/clause end, a segment boundary or a pause
+    longer than LONG_PAUSE, and holds <= max_words words and <= max_chars characters
+    (and, with ``fits``, only word runs for which ``fits(text)`` is true).
+    It shows from its first word until the next caption starts, or, when the next one
+    is more than MAX_GAP away, until HOLD seconds after its last word (the last one is
+    clipped to ``end_limit``, normally the narration length).
+    """
     max_words = max(1, int(max_words))
     max_chars = max(1, int(max_chars))
-    groups = [g for p in _phrases(words, seg_starts) for g in _split_balanced(p, max_words, max_chars)]
+    groups = [g for p in _phrases(words, seg_starts) for g in _split_balanced(p, max_words, max_chars, fits)]
     captions: list[Caption] = []
     for i, g in enumerate(groups):
         last_end = max(g[-1].end, g[-1].start)
@@ -350,7 +376,8 @@ def _layout(cfg: Config) -> _Layout:
     w, h = int(cfg.video.width), int(cfg.video.height)
     scale = min(w / BASE_WIDTH, h / BASE_HEIGHT)
     fs = max(8, round(cfg.captions.font_size * scale))
-    return _Layout(w, h, scale, resolve_font(cfg), fs, max(6, round(fs * TITLE_SIZE)))
+    font = resolve_font(cfg).replace(",", " ")  # a comma would break the Style line
+    return _Layout(w, h, scale, font, fs, max(6, round(fs * TITLE_SIZE)))
 
 
 def _num(x: float) -> str:
@@ -402,6 +429,22 @@ def _dialogue(layer: int, start_cs: int, end_cs: int, style: str, text: str) -> 
 def _display_word(word: str, upper: bool) -> str:
     text = clean_for_speech(word)
     return text.upper() if upper else text
+
+
+def _one_line_fit(cfg: Config, lay: _Layout) -> Callable[[str], bool]:
+    """Predicate: does this run of words fit on one caption line at full size?
+
+    Grouping with it keeps multi-word captions on a single line (no lopsided two-line
+    wraps that make the caption jump); a single long word still shrinks to fit.
+    """
+    max_w = lay.width * MAX_TEXT_WIDTH
+    upper = cfg.captions.uppercase
+
+    def fits(text: str) -> bool:
+        shown = " ".join(_display_word(w, upper) for w in text.split())
+        return text_width(shown, lay.font_size) <= max_w
+
+    return fits
 
 
 def _caption_events(cfg: Config, lay: _Layout, cap: Caption) -> list[str]:
@@ -469,7 +512,9 @@ def build_ass(cfg: Config, narration: Narration, script: VideoScript, out_path: 
     cc = cfg.captions
     seg_starts = [s.start for s in narration.segments]
     captions = group_captions(
-        narration.words, seg_starts, cc.words_per_caption, cc.max_chars, end_limit=narration.duration or None
+        narration.words, seg_starts, cc.words_per_caption, cc.max_chars,
+        end_limit=narration.duration or None,
+        fits=_one_line_fit(cfg, lay) if cc.words_per_caption <= ONE_LINE_MAX_WORDS else None,
     )
     lines = _header(cfg, lay, script.title)
     if cc.show_title:

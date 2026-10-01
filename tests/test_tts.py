@@ -530,7 +530,7 @@ def test_narration_handles_empty_segments_and_emoji(fake_engines, tmp_path):
     fake_engines(["edge"])
     cfg = Config()
     cfg.tts.segment_gap = 0.5
-    script = make_script("one two", "🔥🔥", "three four")
+    script = make_script("one two", "🔥🔥 !!!", "three four")
     nar = synthesize_narration(cfg, script, tmp_path)
     assert len(nar.segments) == 3
     assert nar.segments[1].start == nar.segments[1].end == pytest.approx(0.5)

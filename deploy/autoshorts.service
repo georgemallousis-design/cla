@@ -1,0 +1,43 @@
+# systemd service: make one video and upload it to YouTube.
+# Started by autoshorts.timer (3x a day). deploy/install.sh copies this file to
+# /etc/systemd/system/ with the paths and user filled in; to install it by hand:
+#
+#   sudo cp deploy/autoshorts.service deploy/autoshorts.timer /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl start autoshorts.service      # one test run now
+#   journalctl -u autoshorts.service -e          # its log
+#   sudo systemctl enable --now autoshorts.timer # then let the timer take over
+#
+# Change ExecStart to taste, e.g. "--upload youtube,tiktok", or "--no-upload" to only
+# render (review the videos in output/ and upload them with `autoshorts upload`).
+# Exit code 3 (video made, upload failed) marks the run as failed on purpose, so it
+# shows up in `systemctl --failed`.
+
+[Unit]
+Description=autoshorts: make and upload one short video
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=autoshorts
+Group=autoshorts
+WorkingDirectory=/opt/autoshorts
+ExecStart=/opt/autoshorts/.venv/bin/autoshorts batch -n 1 --upload youtube
+Environment=PYTHONUNBUFFERED=1
+# Rendering is CPU heavy: keep the rest of the server responsive, and never hang forever.
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+TimeoutStartSec=2h
+
+# Hardening. The service only writes inside WorkingDirectory (output/, cache/, state/,
+# secrets/youtube_token.json) and /tmp.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes

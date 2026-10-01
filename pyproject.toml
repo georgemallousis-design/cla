@@ -32,7 +32,7 @@ autoshorts = "autoshorts.cli:main"
 include = ["autoshorts*"]
 
 [tool.setuptools.package-data]
-autoshorts = ["data/*.json"]
+autoshorts = ["data/*.json", "data/*.txt"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

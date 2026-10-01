@@ -1,0 +1,247 @@
+# Built-in topic ideas, used when topics.txt is missing or every topic in it was used.
+# Evergreen, family-friendly subjects that suit 60-90 second videos.
+# One topic per line; lines starting with '#' are ignored.
+
+# --- Science
+Why the sky is blue
+Why ice floats on water
+How rainbows form
+Why we have seasons
+How lightning and thunder work
+What causes ocean tides
+How magnets work
+Why the sea is salty
+How fireworks get their colors
+Why soap bubbles are round
+How a microwave oven heats food
+Why leaves change color in autumn
+How glass is made from sand
+Why your voice sounds different on recordings
+How snowflakes form
+Why metal feels colder than wood
+How a rainbow can appear as a full circle
+What makes a volcano erupt
+How earthquakes are measured
+Why the ocean is blue
+
+# --- Space
+Mind-blowing facts about the Sun
+Why Venus is the hottest planet
+How big the universe really is
+What a black hole actually is
+Why the Moon always shows us the same face
+Amazing facts about Saturn's rings
+What astronauts eat in space
+How astronauts sleep in space
+Why Mars is red
+What a neutron star is
+How scientists know what stars are made of
+The journey of the Voyager space probes
+Why there is no sound in space
+Jupiter's Great Red Spot
+How long a day lasts on other planets
+What shooting stars really are
+How solar eclipses happen
+How the International Space Station stays in orbit
+
+# --- Animals
+Octopus superpowers you won't believe
+Why flamingos are pink
+How bees talk with a waggle dance
+Why cats purr
+How dolphins sleep with half their brain
+Tardigrades, the toughest animals on Earth
+The axolotl, the animal that regrows its limbs
+How owls turn their heads so far
+Why zebras have stripes
+How migrating birds find their way
+Sharks are older than trees
+How penguins fly underwater
+The mantis shrimp's super punch
+How sloths survive by being slow
+Why crows are among the smartest birds
+How ants build their colonies
+Animals that glow in the dark
+How camels survive in the desert
+The jellyfish that can turn back time
+Why dogs tilt their heads
+How chameleons change color
+Hummingbirds, the tiniest acrobats
+Why wombats have cube-shaped poop
+How whales communicate with songs
+How elephants talk through the ground
+Why giraffes have such long necks
+How sea otters hold hands while they sleep
+
+# --- Human body
+Mind-blowing facts about the human body
+Why we hiccup
+How your heart beats about 100,000 times a day
+Why we need sleep
+Why we have fingerprints
+Why we blink
+How broken bones heal themselves
+Why your stomach growls
+Why we get brain freeze
+Why we get goosebumps
+How your eyes see color
+
+# --- History
+How the Great Pyramid of Giza was built
+Daily life in ancient Rome
+The lost Library of Alexandria
+How the printing press changed the world
+The race to the Moon
+Why the Great Wall of China was built
+Accidental inventions that changed history
+The mystery of Stonehenge
+How Vikings navigated the seas
+The story of the Titanic
+The Wright brothers' first flight
+How the Rosetta Stone cracked Egyptian hieroglyphs
+Pompeii, the city frozen in time
+How people told time before clocks
+The Silk Road, the world's first superhighway
+Marie Curie's world-changing discoveries
+Why the Leaning Tower of Pisa leans
+How the first computers filled entire rooms
+How ancient Egyptians made paper from papyrus
+The story of the first Olympic marathon
+
+# --- Psychology and the brain
+Why we forget our dreams
+Why you suddenly notice something everywhere
+Why yawning is contagious
+Why we procrastinate
+How habits form in the brain
+The spotlight effect: nobody notices as much as you think
+Why music gives you chills
+Deja vu explained
+The power of first impressions
+Why time flies when you're having fun
+The Dunning-Kruger effect
+Optical illusions that fool your brain
+Why unfinished tasks stick in your mind
+Memory tricks that actually work
+Why we remember embarrassing moments so well
+The myth that we only use 10 percent of our brain
+
+# --- Geography
+The Mariana Trench, the deepest place in the ocean
+Why you float in the Dead Sea
+The country with the most time zones
+The Atacama, the driest desert on Earth
+The Amazon rainforest by the numbers
+Why Iceland has so many volcanoes
+The smallest countries in the world
+The Sahara used to be green
+Surprising facts about Antarctica
+Why Venice is built on water
+The longest rivers in the world
+Places where the sun never sets in summer
+Why some countries drive on the left
+How the Grand Canyon was carved
+Lakes with surprising colors
+Countries that border only one other country
+
+# --- Technology
+How the internet travels under the ocean
+How GPS knows where you are
+How Wi-Fi works
+How touchscreens sense your finger
+How QR codes work
+Why phone batteries wear out
+How noise-cancelling headphones work
+How 3D printers build objects
+How search engines find answers in seconds
+How websites keep your password safe
+What a computer chip actually does
+How solar panels make electricity
+How electric cars work
+How airplanes stay in the air
+How a camera captures a photo
+How text messages travel
+The history of video games
+How barcodes work at the checkout
+
+# --- Food
+Why honey almost never spoils
+Why onions make you cry
+How chocolate is made from cocoa beans
+Why popcorn pops
+The surprising history of pizza
+Why spicy food feels hot
+How cheese is made
+Fruits that are secretly berries
+Why bread rises
+How coffee goes from cherry to cup
+Foods that were invented by accident
+Why carrots are orange
+The history of ice cream
+Why apples turn brown after you cut them
+
+# --- Sports trivia
+Why golf balls have dimples
+Why a marathon is 42.195 kilometres long
+Why tennis scoring goes 15, 30, 40
+Why basketball hoops are 10 feet high
+The dog that found the stolen World Cup trophy
+Sports that used to be in the Olympics
+The physics of a perfect free kick
+How a curveball curves
+How the Tour de France works
+Why Olympic gold medals are mostly silver
+The history of the Olympic Games
+
+# --- Money-saving basics
+The 24-hour rule to stop impulse buying
+How to make a simple monthly budget
+Small daily expenses that quietly add up
+Easy ways to save money on groceries
+The 50/30/20 budgeting rule explained
+Why everyone needs a small emergency fund
+Simple ways to lower your electricity bill
+Supermarket tricks that make you spend more
+How cutting food waste saves you money
+Free things to do on the weekend
+How subscriptions quietly drain your wallet
+The envelope method for saving money
+How much you save by cooking at home
+
+# --- Riddles and quizzes
+Riddles that will twist your brain
+Logic puzzles to test your brain
+Math riddles with surprising answers
+Lateral thinking riddles
+Classic riddles for the whole family
+Quick brain teasers to start your day
+Trick questions that fool almost everyone
+General knowledge quiz: can you get 5 out of 5?
+Guess the country from three clues
+Guess the animal from three clues
+True or false: common myths
+Space quiz for curious minds
+
+# --- Stories
+A short story about a lighthouse keeper
+A story about a robot learning to paint
+A story about the power of small kindness
+A story about a kid who planted a tree
+An astronaut's first look at Earth
+The bamboo tree and the power of patience
+A story about a message in a bottle
+
+# --- Motivation
+The 1 percent better every day rule
+How to stop procrastinating in 5 minutes
+Why small habits beat big goals
+How failure leads to success
+The 2-minute rule for building habits
+Stop comparing yourself to others
+How to stay motivated when progress is slow
+Famous people who failed before they succeeded
+The power of saying no
+Why discipline beats motivation
+How to build confidence step by step
+Why rest makes you more productive
+Start before you feel ready

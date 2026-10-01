@@ -14,7 +14,8 @@ the engine, concatenates them with ``cfg.tts.segment_gap`` seconds of silence in
 ``workdir/narration.wav`` (48 kHz stereo PCM), offsets word timings to absolute times
 and returns a Narration with one TimedSegment per script segment.
 
-Engines that cannot report word timings use ``tts.timing.estimate_word_timings``.
+Engines that cannot report word timings use ``tts.timing.estimate_word_timings``
+(through ``estimate_from_audio``, which also lines words up with the audio's pauses).
 
 Extras: ``check_engines()`` reports which engines can run here (for ``doctor``);
 ``tts.edge.list_voices(lang)`` lists edge voices (for ``voices``).
@@ -31,6 +32,7 @@ from typing import Callable
 from ..config import Config
 from ..models import Narration, SpeechResult, TimedSegment, VideoScript, WordTiming
 from ..utils import AutoShortsError, ensure_dir, log, media_duration, run_ffmpeg
+from .timing import display_tokens
 
 ENGINE_NAMES = ("edge", "pyttsx3", "espeak")
 SAMPLE_RATE = 48_000
@@ -178,9 +180,15 @@ def clean_for_speech(text: str) -> str:
     return " ".join(_EMOJI_RE.sub(" ", text).split())
 
 
+def _speakable(text: str) -> str:
+    """Cleaned text, or "" when nothing in it would be spoken (e.g. "!!!")."""
+    text = clean_for_speech(text)
+    return text if display_tokens(text) else ""
+
+
 def synthesize_narration(cfg: Config, script: VideoScript, workdir: Path) -> Narration:
     workdir = ensure_dir(workdir)
-    texts = [clean_for_speech(s.text) for s in script.segments]
+    texts = [_speakable(s.text) for s in script.segments]
     if not any(texts):
         raise AutoShortsError("the script has no text to speak")
     engine = get_engine(cfg)

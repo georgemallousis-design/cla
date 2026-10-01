@@ -1,0 +1,75 @@
+# topics.txt - what your next videos are about
+# ---------------------------------------------
+# One topic per line. Blank lines and lines starting with '#' are ignored, and
+# duplicates are skipped (case-insensitive).
+#
+# How it is used:
+#   * `autoshorts make` / `batch` take the first topic that has not been used yet,
+#     top to bottom. A topic counts as used only after its video rendered successfully
+#     (history: state/used_topics.json).
+#   * When every topic here is used, autoshorts picks from its built-in list of ideas
+#     (`autoshorts topics list --ideas` shows them).
+#   * Add topics from the command line: autoshorts topics add "Why cats purr" "How GPS works"
+#   * One-off video on anything: autoshorts make --topic "How bees make honey"
+#
+# The video format (facts, story, quiz, motivation, explainer) is chosen by
+# script.format in config.yaml or --format, not here; write topics that fit the format
+# you post most. Specific beats vague: "Why octopuses have three hearts" makes a better
+# video than "octopuses".
+#
+# Note: custom topics need an LLM (Ollama or a free API key, see README). Without one,
+# the offline script bank only covers the subjects it ships with.
+
+# --- Nature & animals
+Why octopuses have three hearts and blue blood
+How tardigrades survive in outer space
+Why flamingos are pink
+How bees decide where to build a new hive
+Why crows are smarter than you think
+How migrating birds find their way across oceans
+The jellyfish that can reverse its own aging
+
+# --- Space
+What would happen if the Moon disappeared
+Why we always see the same side of the Moon
+How big a neutron star really is
+What happens to your body in space
+Why Mars is red
+How the James Webb telescope sees the past
+
+# --- Human body & mind
+Why we dream
+What happens to your brain when you sleep too little
+Why yawning is contagious
+How your stomach avoids digesting itself
+Why time feels faster as you get older
+The real reason you get goosebumps
+
+# --- History
+How the ancient Egyptians built the pyramids
+The day the Great Library of Alexandria burned
+Why the Roman Empire fell
+How Vikings navigated without a compass
+The shortest war in history
+How people kept food cold before refrigerators
+Why Napoleon was not actually short
+How salt shaped world history
+
+# --- Everyday science & tech
+How GPS knows exactly where you are
+Why airplanes leave white trails in the sky
+How noise-cancelling headphones work
+Why you should never put metal in a microwave
+How a single grain of rice can explain exponential growth
+How touchscreens know where your finger is
+
+# --- Money & mindset (explainer / motivation)
+How compound interest quietly makes people rich
+The two-minute rule that beats procrastination
+Why small daily habits beat big goals
+The psychology of why we buy things we do not need
+
+# --- Quiz ideas
+Guess the country from three clues
+Can you name these planets from one fact
+Animal facts quiz: true or false
