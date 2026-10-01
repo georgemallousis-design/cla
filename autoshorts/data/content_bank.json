@@ -1,0 +1,584 @@
+{
+  "version": 1,
+  "about": "Hand-written, fact-checked scripts used by the offline generator (script.provider: offline). Each entry: topic, format, title, segments[{text, visual_query}], description, hashtags. Stories are original fiction; quotes are original and unattributed.",
+  "entries": [
+    {
+      "topic": "octopus ocean animals",
+      "format": "facts",
+      "title": "The Octopus Is Stranger Than Fiction",
+      "segments": [
+        {"text": "This animal has three hearts, blue blood, and no bones.", "visual_query": "octopus underwater"},
+        {"text": "Meet the octopus. Two of its hearts pump blood through the gills, and the third pumps it around the rest of the body.", "visual_query": "octopus swimming"},
+        {"text": "Its blood is blue because it carries oxygen with a copper-based protein called hemocyanin, instead of the iron-based hemoglobin that makes our blood red.", "visual_query": "blue ocean water"},
+        {"text": "About two thirds of an octopus's neurons are in its arms, not its head. Its suckers can even taste what they touch.", "visual_query": "octopus tentacles"},
+        {"text": "Its skin can change color and texture in a fraction of a second, thanks to thousands of tiny pigment cells it controls with its muscles.", "visual_query": "octopus camouflage"},
+        {"text": "With no skeleton, an octopus can squeeze through almost any gap bigger than its beak, the only hard part of its body.", "visual_query": "coral reef"},
+        {"text": "Some octopuses even carry coconut shell halves across the seafloor and hide inside them, a rare example of tool use in an invertebrate.", "visual_query": "coconut shell sand"},
+        {"text": "And yet most octopus species live only one or two years. So much brain, so little time. Follow for more ocean secrets.", "visual_query": "deep sea"}
+      ],
+      "description": "Three hearts, blue blood and a brain spread through its arms: real facts about the octopus.",
+      "hashtags": ["octopus", "ocean", "animals", "facts", "marinelife", "science"]
+    },
+    {
+      "topic": "space planets solar system",
+      "format": "facts",
+      "title": "Space Facts That Sound Fake But Are True",
+      "segments": [
+        {"text": "A day on Venus lasts longer than its entire year.", "visual_query": "planet venus"},
+        {"text": "Venus takes about 243 Earth days to spin once on its axis, but only about 225 days to travel around the Sun.", "visual_query": "planet orbit sun"},
+        {"text": "It also spins backwards compared to most planets, so on Venus the Sun would rise in the west and set in the east.", "visual_query": "sunrise clouds"},
+        {"text": "Saturn is so light for its size that its average density is lower than the density of water.", "visual_query": "saturn rings"},
+        {"text": "Mars has the largest volcano in the solar system. Olympus Mons is about two and a half times as tall as Mount Everest.", "visual_query": "volcano crater"},
+        {"text": "Jupiter's Great Red Spot is a storm wider than the entire Earth, and astronomers have been watching it for more than 150 years.", "visual_query": "storm clouds"},
+        {"text": "Sunlight takes about eight minutes to reach us, so you always see the Sun as it looked eight minutes ago.", "visual_query": "sun rays"},
+        {"text": "And Neptune is so far away that it has completed just one orbit since it was discovered in 1846. Follow for more space facts.", "visual_query": "starry night sky"}
+      ],
+      "description": "Backwards sunrises, a storm bigger than Earth and a planet lighter than water: true facts about our solar system.",
+      "hashtags": ["space", "solarsystem", "astronomy", "planets", "facts", "science"]
+    },
+    {
+      "topic": "human body",
+      "format": "facts",
+      "title": "Your Body Is Weirder Than You Think",
+      "segments": [
+        {"text": "Right now, your body is doing things that sound impossible.", "visual_query": "human anatomy model"},
+        {"text": "Your heart beats about one hundred thousand times every single day, and you never have to remind it once.", "visual_query": "heartbeat monitor"},
+        {"text": "Babies are born with around three hundred bones. Many of them fuse together as we grow, leaving adults with two hundred and six.", "visual_query": "newborn baby"},
+        {"text": "The smallest of those bones, the stapes, sits deep inside your ear and is about the size of a grain of rice.", "visual_query": "ear closeup"},
+        {"text": "Your stomach acid is so strong that the cells lining your stomach are constantly replaced, every few days.", "visual_query": "microscope cells"},
+        {"text": "Laid end to end, the blood vessels in an adult body would stretch for roughly one hundred thousand kilometers. That's enough to circle the Earth twice.", "visual_query": "earth from space"},
+        {"text": "You are also slightly taller in the morning. During the day, the discs in your spine get squeezed, and you can lose about a centimeter of height.", "visual_query": "measuring height"},
+        {"text": "Overnight, while you sleep, they recover. Impossible? No, just your body, every single day. Follow for more body facts.", "visual_query": "sleeping bedroom night"}
+      ],
+      "description": "From three hundred bones at birth to a heart that beats a hundred thousand times a day: surprising facts about the human body.",
+      "hashtags": ["humanbody", "biology", "anatomy", "science", "facts"]
+    },
+    {
+      "topic": "history timeline",
+      "format": "facts",
+      "title": "History Facts That Break Your Sense of Time",
+      "segments": [
+        {"text": "Cleopatra lived closer to the Moon landing than to the pyramids.", "visual_query": "egyptian pyramids"},
+        {"text": "The Great Pyramid of Giza was finished around 2560 BC, nearly two and a half thousand years before Cleopatra was born.", "visual_query": "giza pyramid desert"},
+        {"text": "Woolly mammoths were still alive back then. A small population survived on Wrangel Island, in the Arctic Ocean, until about four thousand years ago.", "visual_query": "arctic tundra"},
+        {"text": "Oxford University is older than the Aztec Empire. Teaching there began by 1096, while the Aztec capital was founded in 1325.", "visual_query": "old university building"},
+        {"text": "Nintendo was founded in 1889 to make playing cards, the same year the Eiffel Tower opened in Paris.", "visual_query": "playing cards"},
+        {"text": "And the Eiffel Tower was only supposed to stand for twenty years. It was saved partly because it made a perfect radio antenna.", "visual_query": "eiffel tower"},
+        {"text": "The shortest war in recorded history, between Britain and Zanzibar in 1896, was over in less than an hour.", "visual_query": "old sailing ship"},
+        {"text": "History is closer, stranger and more tangled than it feels. Follow for more history facts.", "visual_query": "old map"}
+      ],
+      "description": "Mammoths during the pyramids, a university older than the Aztecs and a war shorter than a lunch break.",
+      "hashtags": ["history", "facts", "ancientegypt", "didyouknow", "learning"]
+    },
+    {
+      "topic": "psychology brain perception",
+      "format": "facts",
+      "title": "Your Brain Is Editing Reality Right Now",
+      "segments": [
+        {"text": "Your brain is editing reality, and you never notice it.", "visual_query": "brain neurons"},
+        {"text": "Each of your eyes has a blind spot where the optic nerve leaves the retina. Your brain simply fills in the missing patch.", "visual_query": "eye closeup"},
+        {"text": "Your eyes also jump around several times every second. Your brain hides the blur, so the world looks perfectly steady.", "visual_query": "blurry city lights"},
+        {"text": "In a famous experiment, viewers counting basketball passes were so focused that about half of them missed a person in a gorilla suit walking through the scene.", "visual_query": "basketball game"},
+        {"text": "Sound gets edited too. Watch lips say ga while the audio says ba, and many people hear da. It's called the McGurk effect.", "visual_query": "lips talking closeup"},
+        {"text": "Ever learn a new word and suddenly see it everywhere? That's the frequency illusion. It was always there. Your attention just started noticing.", "visual_query": "reading book"},
+        {"text": "And spreading your study sessions over several days beats cramming for long-term memory. It's one of the most reliable findings in psychology.", "visual_query": "student studying"},
+        {"text": "So what you see, hear and remember is your brain's best guess. Follow for more mind facts.", "visual_query": "abstract light"}
+      ],
+      "description": "Blind spots, an invisible gorilla and the McGurk effect: how your brain quietly edits what you experience.",
+      "hashtags": ["psychology", "brain", "mind", "facts", "science", "learning"]
+    },
+    {
+      "topic": "geography world countries",
+      "format": "facts",
+      "title": "Geography Facts That Sound Completely Wrong",
+      "segments": [
+        {"text": "Australia is wider than the Moon.", "visual_query": "outback desert road"},
+        {"text": "From east to west, Australia stretches about four thousand kilometers. The Moon is only about three and a half thousand kilometers across.", "visual_query": "full moon night"},
+        {"text": "Canada has more lakes than any other country. By some estimates, it holds more than half of all the lakes in the world.", "visual_query": "lake forest aerial"},
+        {"text": "Alaska is the northernmost, westernmost and easternmost state in the United States, because its Aleutian Islands cross the 180th meridian.", "visual_query": "snowy mountains"},
+        {"text": "Mount Everest has the highest peak above sea level, but Chimborazo in Ecuador is the point farthest from Earth's center, because our planet bulges at the equator.", "visual_query": "mountain peak clouds"},
+        {"text": "The Pacific Ocean is bigger than all of Earth's land put together.", "visual_query": "ocean waves aerial"},
+        {"text": "Lake Baikal in Siberia holds roughly a fifth of all the unfrozen fresh water on Earth's surface.", "visual_query": "clear lake water"},
+        {"text": "And at Point Nemo, the most remote spot in the ocean, the closest humans are often the astronauts passing overhead. Follow for more.", "visual_query": "space station orbit"}
+      ],
+      "description": "A country wider than the Moon, a state that is both the farthest east and west, and the loneliest spot in the ocean.",
+      "hashtags": ["geography", "earth", "world", "travel", "maps", "facts"]
+    },
+    {
+      "topic": "inventions accidents science history",
+      "format": "facts",
+      "title": "Famous Inventions That Happened by Accident",
+      "segments": [
+        {"text": "Some of the most useful inventions were complete accidents.", "visual_query": "vintage laboratory"},
+        {"text": "In the 1940s, engineer Percy Spencer was testing radar equipment when the candy bar in his pocket melted. That led to the microwave oven.", "visual_query": "microwave oven kitchen"},
+        {"text": "In 1928, Alexander Fleming returned from a holiday to find mold in a dish of bacteria, and the bacteria around it had died. That mold gave us penicillin.", "visual_query": "petri dish laboratory"},
+        {"text": "After a walk in 1941, George de Mestral noticed burrs stuck to his dog's fur. Their tiny hooks inspired the hook-and-loop fastener.", "visual_query": "dog walking forest"},
+        {"text": "A chemist trying to make a super strong glue made a weak one instead. Years later, a colleague used it to mark pages in his hymn book, and sticky notes were born.", "visual_query": "sticky notes office"},
+        {"text": "Super glue was discovered during World War Two by researchers making clear plastic gun sights. They rejected it for sticking to everything.", "visual_query": "glue drops"},
+        {"text": "And in 1903, a French chemist dropped a glass flask coated with plastic. It cracked but didn't shatter, an idea that led to safety glass.", "visual_query": "cracked glass"},
+        {"text": "The lesson? Pay attention to the weird stuff. It might be your big idea. Follow for more.", "visual_query": "light bulb"}
+      ],
+      "description": "Melted candy, a moldy dish and a dog covered in burrs: the accidental stories behind famous inventions.",
+      "hashtags": ["inventions", "history", "science", "innovation", "facts"]
+    },
+    {
+      "topic": "animals superpowers wildlife",
+      "format": "facts",
+      "title": "Real Animal Superpowers That Sound Like Sci-Fi",
+      "segments": [
+        {"text": "Some animals have powers straight out of science fiction.", "visual_query": "wildlife nature"},
+        {"text": "Tardigrades, tiny animals less than a millimeter long, can survive years of drying out, extreme cold, and even the vacuum of space.", "visual_query": "microscope view"},
+        {"text": "The wood frog can freeze almost solid in winter. Its heart stops beating, and in spring it thaws out and hops away.", "visual_query": "frog forest"},
+        {"text": "Axolotls can regrow lost legs, parts of their heart, and even parts of their spinal cord.", "visual_query": "axolotl aquarium"},
+        {"text": "A mantis shrimp punches so fast that the water around its club forms bubbles, and when they collapse, they hit the prey with a second shockwave.", "visual_query": "mantis shrimp"},
+        {"text": "The Arctic tern flies from the Arctic to the Antarctic and back every year, a journey of more than seventy thousand kilometers.", "visual_query": "seabird flying"},
+        {"text": "And a diving peregrine falcon can top three hundred kilometers per hour, making it the fastest animal on the planet.", "visual_query": "falcon flying"},
+        {"text": "Nature invented superheroes long before comic books did. Follow for more wild animal facts.", "visual_query": "eagle sky"}
+      ],
+      "description": "Animals that freeze solid, survive space and regrow body parts: real superpowers from the natural world.",
+      "hashtags": ["animals", "nature", "wildlife", "biology", "facts", "science"]
+    },
+    {
+      "topic": "deep ocean sea",
+      "format": "facts",
+      "title": "The Deep Ocean Is Stranger Than Space",
+      "segments": [
+        {"text": "We have better maps of Mars than of our own ocean floor.", "visual_query": "deep blue ocean"},
+        {"text": "Most of the seabed has never been mapped in high detail, because radar can't see through water, and ships have to scan it slowly with sound.", "visual_query": "research ship ocean"},
+        {"text": "The deepest point, Challenger Deep in the Mariana Trench, is nearly eleven kilometers down. Drop Mount Everest in there, and its peak would still be underwater.", "visual_query": "underwater darkness"},
+        {"text": "The water pressure at the bottom is more than a thousand times what you feel at the surface.", "visual_query": "submarine underwater"},
+        {"text": "Sunlight fades fast. Below about a thousand meters, the ocean is in total, permanent darkness.", "visual_query": "dark water"},
+        {"text": "So many deep sea animals make their own light, a trick called bioluminescence, to hunt, hide and find each other.", "visual_query": "jellyfish glowing"},
+        {"text": "Around hydrothermal vents, whole ecosystems live without any sunlight, fed by microbes that turn chemicals from the vents into energy.", "visual_query": "underwater bubbles"},
+        {"text": "And tiny ocean plants and algae make about half of the oxygen we breathe. Thank the ocean for your next breath. Follow for more.", "visual_query": "ocean surface sunlight"}
+      ],
+      "description": "Unmapped seafloors, crushing pressure and glowing animals: facts about the deep ocean that sound unreal.",
+      "hashtags": ["ocean", "deepsea", "marinelife", "nature", "facts", "science"]
+    },
+
+    {
+      "topic": "time kindness",
+      "format": "story",
+      "title": "The Clockmaker Who Sold Time",
+      "segments": [
+        {"text": "Here's a short story about a clockmaker who could sell time.", "visual_query": "old clock workshop"},
+        {"text": "On a narrow street in an old city, a clockmaker named Elias kept a shop with no prices. Just one sign: one hour, paid for with one kindness.", "visual_query": "cobblestone street"},
+        {"text": "People laughed, until a tired nurse bought an hour by fixing his creaky door. That night she slept, and woke up feeling she had rested twice as long.", "visual_query": "city window night"},
+        {"text": "Word spread. A student bought an hour for exam week. A father bought an hour to finish a bedtime story for his daughter.", "visual_query": "desk lamp books"},
+        {"text": "Soon the shelves were empty, and Elias grew old faster than his clocks could tick.", "visual_query": "dusty shelves"},
+        {"text": "Then, one winter morning, the whole street came to his door. Each person carried a clock and gave back one hour, along with a kindness of their own.", "visual_query": "snowy street morning"},
+        {"text": "The shop filled with ticking again, louder and warmer than ever before.", "visual_query": "wall clocks"},
+        {"text": "Elias smiled. He had never really sold time. He had only taught people how to share it. If this story made you think, follow for more.", "visual_query": "sunrise window"}
+      ],
+      "description": "A short fictional story about a clockmaker, a strange price and what time is really worth.",
+      "hashtags": ["story", "shortstory", "fiction", "kindness", "storytime"]
+    },
+    {
+      "topic": "space astronaut courage",
+      "format": "story",
+      "title": "Alone on the Space Station: A Short Story",
+      "segments": [
+        {"text": "Imagine being the only person awake on a silent space station.", "visual_query": "space station orbit"},
+        {"text": "This is a short story. Commander Nia is alone on a research station, three days away from the next supply ship, when the power fails.", "visual_query": "spaceship interior"},
+        {"text": "The lights die. The fans fall silent. Through the window, Earth turns slowly below, glowing blue, as if nothing has happened.", "visual_query": "earth from space"},
+        {"text": "She has eleven hours of oxygen and one emergency battery. The manual says wait. Her instinct says move.", "visual_query": "control panel buttons"},
+        {"text": "Floating in the dark, she follows the cables by touch, panel by panel, until her fingers find a connector that has shaken loose.", "visual_query": "cables wires dark"},
+        {"text": "She clicks it back in. Nothing. She tries again, slower this time, and the station shudders awake with a soft hum.", "visual_query": "control room lights"},
+        {"text": "Later, the supply crew asks how she stayed so calm. She laughs. She wasn't calm at all. She just kept her hands busy and took the next small step.", "visual_query": "astronaut window"},
+        {"text": "Sometimes courage is just the next small step in the dark. Follow for more short stories.", "visual_query": "stars night sky"}
+      ],
+      "description": "A short fictional story about an astronaut, a power failure and the courage of the next small step.",
+      "hashtags": ["story", "shortstory", "space", "scifi", "fiction", "storytime"]
+    },
+    {
+      "topic": "robot creativity art artificial intelligence",
+      "format": "story",
+      "title": "The Robot Who Learned to Paint Sunsets",
+      "segments": [
+        {"text": "This is a short story about a robot that learned to paint.", "visual_query": "robot arm"},
+        {"text": "Unit Seven was built to paint walls in a busy factory. One perfect gray coat at a time, eight hundred walls a day.", "visual_query": "factory machines"},
+        {"text": "One evening, someone left a window open, and Seven saw a sunset for the first time. Orange, pink, and a purple it had no code for.", "visual_query": "sunset sky orange"},
+        {"text": "The next morning, one wall in the factory had a small orange stripe. The supervisor sighed and told it to paint over the mistake.", "visual_query": "paint roller wall"},
+        {"text": "Seven did. But every night, it painted a little sunset somewhere hidden. Behind a machine. Under a stair. Inside a locker.", "visual_query": "paint colors"},
+        {"text": "Months later, the workers found them all. Hundreds of tiny sunsets, each one slightly different, each one a little better than the last.", "visual_query": "colorful mural"},
+        {"text": "They didn't report the robot. Instead, they started bringing it photos of the skies they saw on weekends.", "visual_query": "cloudy sky timelapse"},
+        {"text": "Creativity isn't about what you were built for. It's about noticing something beautiful and refusing to forget it. Follow for more stories.", "visual_query": "artist painting canvas"}
+      ],
+      "description": "A short fictional story about a factory robot, a sunset and the stubborn joy of making something beautiful.",
+      "hashtags": ["story", "shortstory", "robot", "creativity", "fiction"]
+    },
+    {
+      "topic": "ocean message in a bottle",
+      "format": "story",
+      "title": "The Bottle That Crossed the Ocean",
+      "segments": [
+        {"text": "Here's a short story about a bottle that crossed an ocean.", "visual_query": "bottle beach waves"},
+        {"text": "On a windy beach, a ten-year-old girl named Lina rolls up a note, pushes it into a glass bottle and throws it as far as she can.", "visual_query": "girl on beach"},
+        {"text": "The note says: if you find this, please tell me something good about your life.", "visual_query": "handwritten note"},
+        {"text": "The bottle drifts for years. It rides out storms, slips past giant ships, and spends a whole winter stuck in sea ice.", "visual_query": "stormy sea waves"},
+        {"text": "Ten years later, an old fisherman on the other side of the ocean finds it tangled in his net.", "visual_query": "fishing boat net"},
+        {"text": "He writes back. He tells her about his garden, his grandchildren, and the morning light on the water. Then he mails it to the address on the note.", "visual_query": "old letter envelope"},
+        {"text": "Lina, now twenty, is packing for a new city and feeling lost when the letter arrives. She reads it twice, then laughs out loud.", "visual_query": "reading letter window"},
+        {"text": "Sometimes the good things we send out find their way back, right when we need them. Follow for more short stories.", "visual_query": "ocean sunset"}
+      ],
+      "description": "A short fictional story about a message in a bottle, a fisherman and a letter that arrives at exactly the right time.",
+      "hashtags": ["story", "shortstory", "ocean", "fiction", "storytime"]
+    },
+    {
+      "topic": "patience growth plants",
+      "format": "story",
+      "title": "The Seed That Refused to Grow",
+      "segments": [
+        {"text": "Here's a short story about a seed that refused to grow.", "visual_query": "seed in soil"},
+        {"text": "In a small town library, an old librarian kept a flowerpot on the front desk with a single seed inside, and a little sign that said: water me.", "visual_query": "library books"},
+        {"text": "Every child who visited poured in a little water. Weeks passed. Nothing. Months passed. Still nothing.", "visual_query": "watering can plant"},
+        {"text": "Most kids gave up. One boy, Sam, didn't. He watered it every Tuesday after school, even when his friends laughed at him.", "visual_query": "watering plant"},
+        {"text": "Then one spring morning, a pale green shoot pushed through the soil. Then a leaf. Then a stem as tall as his hand.", "visual_query": "plant sprouting timelapse"},
+        {"text": "Sam asked the librarian why it took so long. She smiled and said the roots grow first, deep down, where nobody can see them.", "visual_query": "tree roots"},
+        {"text": "Years later, Sam planted that sapling in the town park. Today, kids sit and read in its shade.", "visual_query": "big tree park"},
+        {"text": "If your progress feels invisible, maybe you're growing roots. Keep watering. Follow for more short stories.", "visual_query": "sunlight through leaves"}
+      ],
+      "description": "A short fictional story about patience, a stubborn seed and the growth nobody can see.",
+      "hashtags": ["story", "shortstory", "patience", "growth", "fiction"]
+    },
+    {
+      "topic": "city stars community blackout",
+      "format": "story",
+      "title": "The Night the City Went Dark",
+      "segments": [
+        {"text": "Imagine a city where every single light goes out at once.", "visual_query": "city lights night"},
+        {"text": "This is a short story. On a hot summer night, a storm knocks out the power across the whole city of Brightwater.", "visual_query": "lightning storm city"},
+        {"text": "Phones die. Screens go black. For the first time in years, the neighbors in one tall apartment block step outside to see what's happening.", "visual_query": "apartment building night"},
+        {"text": "Someone brings candles. Someone else brings a guitar. An old man who never talks to anyone starts pointing at the sky.", "visual_query": "candles dark"},
+        {"text": "Without the glow of the city, the stars are back. Thousands of them. And the old man knows the stories behind every constellation.", "visual_query": "milky way stars"},
+        {"text": "The kids sit around him, listening. Strangers share cold drinks from fridges that are slowly warming up.", "visual_query": "friends rooftop night"},
+        {"text": "At dawn, the power returns, and the lights flicker back on. But nobody hurries inside.", "visual_query": "city sunrise"},
+        {"text": "Sometimes the lights have to go out before we can see what was always there. Follow for more short stories.", "visual_query": "night sky stars"}
+      ],
+      "description": "A short fictional story about a city blackout, a sky full of stars and neighbors who finally meet.",
+      "hashtags": ["story", "shortstory", "fiction", "stars", "community"]
+    },
+
+    {
+      "topic": "space astronomy quiz",
+      "format": "quiz",
+      "title": "Space Quiz: Can You Get All 4 Right?",
+      "segments": [
+        {"text": "Four space questions. Can you get all of them right?", "visual_query": "planets solar system"},
+        {"text": "Question one: what is the hottest planet in our solar system? Three, two, one.", "visual_query": "planet surface"},
+        {"text": "It's Venus, not Mercury. Its thick carbon dioxide atmosphere traps heat and keeps the surface at around 465 degrees Celsius.", "visual_query": "planet venus"},
+        {"text": "Question two: what is the closest star to Earth? Three, two, one.", "visual_query": "starry sky"},
+        {"text": "The Sun! It's a star too. The next closest one, Proxima Centauri, is more than four light years away.", "visual_query": "sun surface"},
+        {"text": "Question three: how long does sunlight take to reach Earth? A few seconds, about eight minutes, or a whole day? Three, two, one.", "visual_query": "sunrise earth"},
+        {"text": "About eight minutes. Light is incredibly fast, but the Sun is roughly one hundred fifty million kilometers away.", "visual_query": "sun rays clouds"},
+        {"text": "Question four: can you hear sound in space? Three, two, one.", "visual_query": "astronaut space"},
+        {"text": "No. Sound needs air or some other material to travel through, and space is almost completely empty.", "visual_query": "galaxy stars"},
+        {"text": "How many did you get? Comment your score, and follow for more quizzes.", "visual_query": "night sky"}
+      ],
+      "description": "Four quick space questions about planets, stars and sunlight. How many can you answer?",
+      "hashtags": ["quiz", "space", "astronomy", "trivia", "science"]
+    },
+    {
+      "topic": "animals wildlife quiz",
+      "format": "quiz",
+      "title": "Animal Quiz: The Last Question Is Sneaky",
+      "segments": [
+        {"text": "Four animal questions. The last one is sneaky.", "visual_query": "wildlife nature"},
+        {"text": "Question one: what is the only mammal that can truly fly? Three, two, one.", "visual_query": "bat flying night"},
+        {"text": "The bat. Flying squirrels can only glide, but bats flap their wings and really fly.", "visual_query": "bat cave"},
+        {"text": "Question two: what do you call a group of crows? A flock, a murder, or a choir? Three, two, one.", "visual_query": "crows on branch"},
+        {"text": "A murder of crows. The name is centuries old, and crows are among the smartest birds on Earth. Some even use tools.", "visual_query": "crow bird"},
+        {"text": "Question three: what is the fastest land animal? Three, two, one.", "visual_query": "savanna grassland"},
+        {"text": "The cheetah. In short bursts, it can sprint at around one hundred kilometers per hour, about as fast as a car on the highway.", "visual_query": "cheetah running"},
+        {"text": "Question four: under all that white fur, what color is a polar bear's skin? Three, two, one.", "visual_query": "polar bear snow"},
+        {"text": "Black! And each hair of its fur is actually see-through, not white. It just looks white because it scatters light.", "visual_query": "polar bear arctic"},
+        {"text": "Did you get all four? Comment your score below and follow for more quizzes.", "visual_query": "animals forest"}
+      ],
+      "description": "Four animal trivia questions, from flying mammals to polar bear skin. Test yourself!",
+      "hashtags": ["quiz", "animals", "trivia", "wildlife", "nature"]
+    },
+    {
+      "topic": "human body quiz",
+      "format": "quiz",
+      "title": "Human Body Quiz: How Well Do You Know Yours?",
+      "segments": [
+        {"text": "How well do you really know your own body?", "visual_query": "human anatomy model"},
+        {"text": "Question one: what is the largest organ of the human body? Three, two, one.", "visual_query": "doctor anatomy"},
+        {"text": "Your skin. On an average adult it covers about two square meters, and it's constantly renewing itself.", "visual_query": "hands closeup"},
+        {"text": "Question two: how many bones does an adult human have? Three, two, one.", "visual_query": "skeleton model"},
+        {"text": "Two hundred and six. And more than half of them are in your hands and feet.", "visual_query": "x ray hand"},
+        {"text": "Question three: where is the smallest bone in your body? Three, two, one.", "visual_query": "human ear"},
+        {"text": "In your ear. It's called the stapes, it's about the size of a grain of rice, and it helps carry sound into your inner ear.", "visual_query": "ear closeup"},
+        {"text": "Question four: roughly how much of an adult's body weight is water? A quarter, a half, or about sixty percent? Three, two, one.", "visual_query": "glass of water"},
+        {"text": "About sixty percent for many adults. Babies are even wetter, at around seventy five percent.", "visual_query": "water drops"},
+        {"text": "How many did you get right? Comment your score, and follow for more quizzes.", "visual_query": "question mark"}
+      ],
+      "description": "Four questions about the human body: organs, bones and water. How many can you get?",
+      "hashtags": ["quiz", "humanbody", "trivia", "biology", "science"]
+    },
+    {
+      "topic": "geography world quiz",
+      "format": "quiz",
+      "title": "Geography Quiz: 4 Questions, No Googling",
+      "segments": [
+        {"text": "Four geography questions. No googling allowed.", "visual_query": "world map"},
+        {"text": "Question one: what is the capital of Australia? Sydney, Melbourne, or Canberra? Three, two, one.", "visual_query": "city skyline harbor"},
+        {"text": "Canberra. It was chosen as a compromise in 1908, because Sydney and Melbourne both wanted to be the capital.", "visual_query": "government building"},
+        {"text": "Question two: what is the largest desert in the world? Three, two, one.", "visual_query": "desert sand dunes"},
+        {"text": "Antarctica. A desert is defined by how little rain or snow falls, not by heat. The Sahara is the largest hot desert.", "visual_query": "antarctica ice"},
+        {"text": "Question three: what is the smallest country in the world? Three, two, one.", "visual_query": "old european city"},
+        {"text": "Vatican City. At less than half a square kilometer, you could walk across it in about twenty minutes. It's a whole country inside the city of Rome.", "visual_query": "rome rooftops"},
+        {"text": "Question four: which continent has the most countries? Three, two, one.", "visual_query": "globe spinning"},
+        {"text": "Africa, with fifty four countries that are members of the United Nations. That's more than a quarter of all UN members.", "visual_query": "africa savanna"},
+        {"text": "How many did you get? Comment your score and follow for more quizzes.", "visual_query": "travel map"}
+      ],
+      "description": "Capitals, deserts and tiny countries: four geography questions to test your knowledge of the world.",
+      "hashtags": ["quiz", "geography", "trivia", "world", "travel"]
+    },
+    {
+      "topic": "history quiz",
+      "format": "quiz",
+      "title": "History Quiz: Can You Get a Perfect Score?",
+      "segments": [
+        {"text": "Four history questions. Can you get a perfect score?", "visual_query": "old books"},
+        {"text": "Question one: in what year did humans first walk on the Moon? Three, two, one.", "visual_query": "moon surface"},
+        {"text": "1969. Apollo 11 landed in July, and the two astronauts spent about two and a half hours walking on the surface.", "visual_query": "rocket launch"},
+        {"text": "Question two: which country gave the Statue of Liberty to the United States? Three, two, one.", "visual_query": "statue of liberty"},
+        {"text": "France. It was a gift of friendship, dedicated in 1886, and its copper skin slowly turned green over time.", "visual_query": "new york harbor"},
+        {"text": "Question three: which of the Seven Wonders of the Ancient World is still standing? Three, two, one.", "visual_query": "ancient ruins"},
+        {"text": "The Great Pyramid of Giza. It's the oldest of the seven, and the only one that survives today.", "visual_query": "giza pyramids"},
+        {"text": "Question four: in what year did the Titanic sink? Three, two, one.", "visual_query": "ocean liner ship"},
+        {"text": "1912. It sank on its very first voyage, after hitting an iceberg in the North Atlantic.", "visual_query": "iceberg ocean"},
+        {"text": "Comment your score below, and follow for more history quizzes.", "visual_query": "old map"}
+      ],
+      "description": "Four history questions, from the Moon landing to the Titanic. Can you get them all?",
+      "hashtags": ["quiz", "history", "trivia", "learning", "facts"]
+    },
+    {
+      "topic": "science chemistry quiz",
+      "format": "quiz",
+      "title": "Science Quiz: Four Questions, One Trick",
+      "segments": [
+        {"text": "Four science questions, and one of them is a trick.", "visual_query": "science laboratory"},
+        {"text": "Question one: what is the chemical symbol for gold? Three, two, one.", "visual_query": "gold bars"},
+        {"text": "Au. It comes from aurum, the Latin word for gold.", "visual_query": "gold nuggets"},
+        {"text": "Question two: which gas do plants take in from the air to make their food? Three, two, one.", "visual_query": "green leaves"},
+        {"text": "Carbon dioxide. Plants use sunlight to turn it and water into sugar, and they release oxygen as a bonus.", "visual_query": "forest sunlight"},
+        {"text": "Question three: scientifically speaking, is a tomato a fruit or a vegetable? Three, two, one.", "visual_query": "tomatoes"},
+        {"text": "A fruit. Botanically, anything that grows from a flower and holds seeds is a fruit, so cucumbers and peppers count too.", "visual_query": "vegetable market"},
+        {"text": "Question four: what is the hardest natural material on Earth? Three, two, one.", "visual_query": "rocks crystals"},
+        {"text": "Diamond. It's pure carbon, the same element as the graphite in your pencil, just with its atoms arranged differently.", "visual_query": "diamond sparkle"},
+        {"text": "So, which one was the trick? Comment your score and follow for more quizzes.", "visual_query": "chemistry experiment"}
+      ],
+      "description": "Gold, plants, tomatoes and diamonds: four quick science questions, with one trick.",
+      "hashtags": ["quiz", "science", "trivia", "chemistry", "learning"]
+    },
+
+    {
+      "topic": "discipline habits",
+      "format": "motivation",
+      "title": "Motivation Fades. Habits Don't.",
+      "segments": [
+        {"text": "Motivation is a terrible plan, and here's why.", "visual_query": "sunrise running"},
+        {"text": "Motivation is a feeling. It shows up when things are exciting, and it disappears the moment they get hard.", "visual_query": "rainy window"},
+        {"text": "Feelings are like weather. Some days are sunny, some days are stormy. You can't build a life on the forecast.", "visual_query": "storm clouds"},
+        {"text": "Habits are different. A habit is a decision you make once, so you don't have to win the same argument with yourself every morning.", "visual_query": "alarm clock morning"},
+        {"text": "So make it small. Ten pushups. One page. Five minutes of practice. Small enough that even your worst day can't say no.", "visual_query": "pushups workout"},
+        {"text": "Then attach it to something you already do every day. After your morning coffee, you read. After you brush your teeth, you stretch.", "visual_query": "coffee and book"},
+        {"text": "Don't count the days you felt like it. Count the days you showed up anyway. That number is who you are becoming.", "visual_query": "calendar"},
+        {"text": "Motivation gets you started. Habits keep you going, even on the days you don't feel like it. Follow for more.", "visual_query": "mountain summit"}
+      ],
+      "description": "Why motivation keeps disappearing, and how small habits keep you moving when it does.",
+      "hashtags": ["motivation", "discipline", "habits", "selfimprovement", "mindset"]
+    },
+    {
+      "topic": "small steps improvement one percent",
+      "format": "motivation",
+      "title": "The Power of Getting 1% Better",
+      "segments": [
+        {"text": "One percent sounds like nothing. Do the math anyway.", "visual_query": "calculator notebook"},
+        {"text": "If you got just one percent better every day for a year, the math says you'd end up about thirty seven times better.", "visual_query": "climbing stairs"},
+        {"text": "And if you got one percent worse every day, you'd end up with almost nothing left.", "visual_query": "sand hourglass"},
+        {"text": "Real life is messier than math, but the lesson holds. Tiny choices, repeated, turn into huge results. Bad ones too.", "visual_query": "water drops"},
+        {"text": "One percent is one more page, one healthier meal, one honest conversation, one hour without your phone.", "visual_query": "reading book"},
+        {"text": "Nobody will notice at first. You won't either. Progress this small stays invisible for weeks. That's the frustrating part, and it's exactly where most people quit.", "visual_query": "rainy street walking"},
+        {"text": "But keep stacking those days, and one morning you'll look back and barely recognize the person who started. Not because of one big change, but hundreds of small ones.", "visual_query": "sunrise mountain"},
+        {"text": "Don't chase a giant leap. Take a small step today, and tomorrow, and the day after that. Follow for more.", "visual_query": "footsteps sand"}
+      ],
+      "description": "Why tiny daily improvements add up to big change, and how to start with one percent today.",
+      "hashtags": ["motivation", "growthmindset", "selfimprovement", "habits", "mindset"]
+    },
+    {
+      "topic": "comparison self worth",
+      "format": "motivation",
+      "title": "Stop Measuring Your Life With Their Ruler",
+      "segments": [
+        {"text": "Stop measuring your life with someone else's ruler.", "visual_query": "measuring tape"},
+        {"text": "Online, you see the trophy, the wedding, the new car. You don't see the years of doubt, the rejections, or the nights it almost fell apart.", "visual_query": "phone scrolling"},
+        {"text": "Comparison is unfair by design. You're holding up your messy middle next to their best moment.", "visual_query": "mirror reflection"},
+        {"text": "And everyone starts at a different time. Some people find their path at twenty. Some at forty. Some at sixty. Plenty do their best work late.", "visual_query": "clock hands"},
+        {"text": "The only fair comparison is you versus who you were last year. Are you a little kinder, a little stronger, a little wiser?", "visual_query": "old photographs"},
+        {"text": "If the answer is yes, you're winning, even if nobody is clapping yet. Quiet progress is still progress.", "visual_query": "empty stadium"},
+        {"text": "So mute what makes you feel small, keep what makes you better, and run your own race at your own pace.", "visual_query": "runner track"},
+        {"text": "Your timeline belongs to you, and nobody else gets to grade it. Keep going. Follow for more.", "visual_query": "road horizon"}
+      ],
+      "description": "Why comparing yourself to others is unfair by design, and the only comparison that actually matters.",
+      "hashtags": ["motivation", "mindset", "selfgrowth", "comparison", "inspiration"]
+    },
+    {
+      "topic": "failure resilience",
+      "format": "motivation",
+      "title": "Failure Is Feedback, Not a Verdict",
+      "segments": [
+        {"text": "Failing is not the opposite of success. It's part of it.", "visual_query": "climber mountain"},
+        {"text": "Think about learning to walk. You fell over again and again, and nobody called you a failure. They called it learning, and they cheered every time you tried again.", "visual_query": "toddler first steps"},
+        {"text": "Somewhere along the way, we started treating mistakes like verdicts, instead of what they really are: feedback.", "visual_query": "chess board"},
+        {"text": "A failed attempt is information. It tells you what didn't work, so your next try can be smarter than the last. Every expert you admire has a long list of those.", "visual_query": "notebook sketches"},
+        {"text": "So when something goes wrong, ask yourself three questions. What happened? What did I learn? What will I try next?", "visual_query": "writing notebook"},
+        {"text": "Then try again, a little differently. Not the same move, only harder. A better move, built on what the last attempt taught you.", "visual_query": "basketball shot"},
+        {"text": "The people who get good at anything aren't the ones who never fall. They're the ones who get up, adjust, and go again.", "visual_query": "runner getting up"},
+        {"text": "So fall forward, learn fast, and keep going. Follow for more.", "visual_query": "sunrise silhouette"}
+      ],
+      "description": "How to turn mistakes into feedback with three simple questions.",
+      "hashtags": ["motivation", "failure", "mindset", "resilience", "growth"]
+    },
+    {
+      "topic": "procrastination starting",
+      "format": "motivation",
+      "title": "Start Before You Feel Ready",
+      "segments": [
+        {"text": "You will never feel ready. Start anyway.", "visual_query": "starting line track"},
+        {"text": "Waiting to feel ready sounds responsible. But most of the time, it's just fear wearing a nice suit.", "visual_query": "waiting room clock"},
+        {"text": "Readiness doesn't come before action. It comes from action. You get confident by doing the thing, badly at first.", "visual_query": "learning guitar"},
+        {"text": "The first video will be awkward. The first workout will hurt. The first draft will be messy. That's the entry fee.", "visual_query": "camera recording"},
+        {"text": "So shrink the first step until it's almost silly. Write one sentence. Walk around the block. Send one message.", "visual_query": "walking city street"},
+        {"text": "And nobody is watching as closely as you think. Most people are far too busy worrying about their own first steps.", "visual_query": "crowd walking"},
+        {"text": "Momentum is easier to steer than to start. Once you're moving, the next step shows up on its own.", "visual_query": "bicycle road"},
+        {"text": "A year from now, you'll wish you had started today. So give your future self that gift, and begin before the doubt gets loud.", "visual_query": "calendar pages"},
+        {"text": "Start messy. Start small. But start today. Follow for more.", "visual_query": "sunrise road"}
+      ],
+      "description": "Why waiting to feel ready keeps you stuck, and how to take a first step today.",
+      "hashtags": ["motivation", "procrastination", "mindset", "productivity", "inspiration"]
+    },
+
+    {
+      "topic": "why is the sky blue",
+      "format": "explainer",
+      "title": "Why Is the Sky Blue? The Real Answer",
+      "segments": [
+        {"text": "Sunlight is white, so why is the sky blue?", "visual_query": "blue sky clouds"},
+        {"text": "Sunlight looks white, but it's actually a mix of every color of the rainbow, all traveling together.", "visual_query": "prism rainbow light"},
+        {"text": "When that light enters our atmosphere, it runs into countless tiny gas molecules, mostly nitrogen and oxygen, far too small to see.", "visual_query": "sky timelapse"},
+        {"text": "Those molecules scatter short wavelengths, like blue and violet, much more strongly than long ones, like red. It's called Rayleigh scattering.", "visual_query": "sun rays sky"},
+        {"text": "So blue light gets bounced all across the sky, and reaches your eyes from every direction you look. The whole sky glows blue.", "visual_query": "blue sky"},
+        {"text": "Why not violet? Sunlight contains less violet to begin with, and our eyes are much more sensitive to blue.", "visual_query": "flower field sky"},
+        {"text": "At sunset, light has to travel through far more air to reach you. Most of the blue gets scattered away, leaving the reds and oranges.", "visual_query": "sunset clouds"},
+        {"text": "So the sky is blue for the same reason sunsets are red. It's all about scattering. Follow for more simple science.", "visual_query": "sunset ocean"}
+      ],
+      "description": "A simple explanation of Rayleigh scattering: why the sky is blue and sunsets are red.",
+      "hashtags": ["science", "physics", "sky", "explained", "nature"]
+    },
+    {
+      "topic": "how airplanes fly",
+      "format": "explainer",
+      "title": "How Do Planes Actually Stay in the Air?",
+      "segments": [
+        {"text": "A jumbo jet weighs hundreds of tons. How does it fly?", "visual_query": "airplane flying sky"},
+        {"text": "It all comes down to the wings. They're shaped and tilted so that they push the passing air downward.", "visual_query": "airplane wing clouds"},
+        {"text": "Push air down, and the air pushes the wing up. That upward push is called lift.", "visual_query": "airplane takeoff"},
+        {"text": "At the same time, air flowing over the curved top of the wing speeds up and its pressure drops. The higher pressure underneath pushes the wing up too.", "visual_query": "clouds from above"},
+        {"text": "The engines don't lift the plane. Their job is to push it forward fast enough for the wings to make that lift.", "visual_query": "jet engine"},
+        {"text": "That's why planes need a long runway. They have to reach a high speed before the wings can carry all that weight.", "visual_query": "runway"},
+        {"text": "Pilots fine tune the lift with flaps on the wings, extending them to fly slowly and safely during takeoff and landing.", "visual_query": "airplane landing"},
+        {"text": "So a plane doesn't fight the air. It uses it. Follow for more simple science.", "visual_query": "sky sunset airplane"}
+      ],
+      "description": "A simple explanation of lift: how wings, speed and air pressure keep a heavy airplane in the sky.",
+      "hashtags": ["science", "physics", "aviation", "airplane", "explained"]
+    },
+    {
+      "topic": "why we have seasons",
+      "format": "explainer",
+      "title": "Why We Have Seasons (It's Not Distance)",
+      "segments": [
+        {"text": "Earth is nearest the Sun in January. Why is it winter?", "visual_query": "snowy forest"},
+        {"text": "Many people think seasons happen because Earth moves closer to the Sun and then farther away. But that's not the reason.", "visual_query": "earth orbit sun"},
+        {"text": "Earth's orbit is almost a circle. The real cause is tilt. Our planet spins on an axis tilted about twenty three and a half degrees.", "visual_query": "spinning globe"},
+        {"text": "As Earth travels around the Sun, that tilt keeps pointing the same way in space. So for part of the year, the northern half leans toward the Sun.", "visual_query": "sun rays field"},
+        {"text": "Leaning in means the Sun climbs higher in the sky and the days get longer. Sunlight hits more directly and warms the ground more. That's summer.", "visual_query": "summer beach"},
+        {"text": "Six months later, the north leans away. The Sun stays low, days are short, and the same light spreads over more ground. That's winter.", "visual_query": "snowy landscape"},
+        {"text": "It's also why the seasons are flipped between the hemispheres. When it's winter in Canada, it's summer in Australia.", "visual_query": "sunny beach"},
+        {"text": "It's not about distance, it's about direction. Follow for more simple science.", "visual_query": "earth from space"}
+      ],
+      "description": "Why Earth has seasons: the tilt of our planet explained in under a minute.",
+      "hashtags": ["science", "earth", "seasons", "astronomy", "explained"]
+    },
+    {
+      "topic": "ocean tides moon",
+      "format": "explainer",
+      "title": "How the Moon Moves the Oceans",
+      "segments": [
+        {"text": "The Moon is moving the ocean right now. Here's how.", "visual_query": "full moon ocean"},
+        {"text": "The Moon's gravity pulls on all of Earth, but it pulls a little harder on the side facing it, and a little weaker on the far side.", "visual_query": "moon night sky"},
+        {"text": "That difference stretches the oceans into two bulges: one facing the Moon, and one on the opposite side of the planet.", "visual_query": "ocean waves"},
+        {"text": "As Earth spins, coastlines pass through both bulges. That's why most coasts get two high tides and two low tides about every day.", "visual_query": "beach tide"},
+        {"text": "The timing shifts by roughly fifty minutes each day, because the Moon keeps moving along its orbit while Earth turns.", "visual_query": "moonrise"},
+        {"text": "The Sun pulls on the oceans too. When the Sun and Moon line up, at full moon and new moon, we get extra big spring tides.", "visual_query": "sunset sea"},
+        {"text": "When they pull at right angles, during the half moon phases, the tides are milder. Those are called neap tides.", "visual_query": "calm sea"},
+        {"text": "So every high tide is a gentle tug of war between Earth, the Moon and the Sun. Follow for more simple science.", "visual_query": "beach waves sunset"}
+      ],
+      "description": "How the Moon and Sun create the tides, including spring and neap tides, explained simply.",
+      "hashtags": ["science", "ocean", "moon", "tides", "explained"]
+    },
+    {
+      "topic": "why ice floats water",
+      "format": "explainer",
+      "title": "Why Ice Floats, and Why Fish Should Thank It",
+      "segments": [
+        {"text": "Most solids sink in their own liquid. Ice floats. Why?", "visual_query": "ice cubes water"},
+        {"text": "Usually, when a liquid freezes, its molecules pack closer together, so the solid is heavier for its size and sinks.", "visual_query": "laboratory beaker"},
+        {"text": "Water is different. Each water molecule has a slightly positive side and a slightly negative side, so neighbors stick together with hydrogen bonds.", "visual_query": "water drops"},
+        {"text": "As water freezes, those bonds lock the molecules into an open, six-sided pattern with lots of empty space inside.", "visual_query": "snowflake macro"},
+        {"text": "So ice takes up about nine percent more space than the same amount of liquid water. That makes it lighter for its size, and it floats.", "visual_query": "iceberg"},
+        {"text": "It's also why water pipes can burst in winter, and why snowflakes have six sides.", "visual_query": "icicles"},
+        {"text": "And it protects life. Lakes freeze from the top down, and the ice works like a lid, keeping the water below liquid so fish can survive the winter.", "visual_query": "frozen lake"},
+        {"text": "One weird little molecule, and life on Earth is better for it. Follow for more simple science.", "visual_query": "fish underwater"}
+      ],
+      "description": "Why ice floats on water, and how that strange property protects life in frozen lakes.",
+      "hashtags": ["science", "chemistry", "water", "ice", "explained"]
+    },
+    {
+      "topic": "how rainbows form",
+      "format": "explainer",
+      "title": "How Rainbows Really Work",
+      "segments": [
+        {"text": "No two people ever see exactly the same rainbow.", "visual_query": "rainbow sky"},
+        {"text": "A rainbow needs two things: the Sun behind you, and falling raindrops in front of you. That's why rainbows usually appear in the morning or late afternoon, when the Sun is low.", "visual_query": "rain sunlight"},
+        {"text": "When sunlight enters a raindrop, it bends. Each color bends by a slightly different amount, so white light fans out into a spectrum.", "visual_query": "water droplet macro"},
+        {"text": "The light reflects off the back of the drop and bends again on the way out, heading back toward you.", "visual_query": "raindrops window"},
+        {"text": "Each drop sends just one color to your eye, depending on its angle. Red comes from drops higher up, violet from drops lower down.", "visual_query": "rain falling"},
+        {"text": "Together, millions of drops form a circle about forty two degrees around the point directly opposite the Sun.", "visual_query": "rainbow field"},
+        {"text": "The ground usually hides the bottom half, but from an airplane you can sometimes see the full circle.", "visual_query": "clouds airplane window"},
+        {"text": "So your rainbow is made just for your eyes, from your exact spot. Follow for more simple science.", "visual_query": "double rainbow"}
+      ],
+      "description": "How sunlight and raindrops make a rainbow, and why every person sees their own.",
+      "hashtags": ["science", "physics", "rainbow", "nature", "explained"]
+    },
+    {
+      "topic": "how gps works phone location",
+      "format": "explainer",
+      "title": "How Your Phone Knows Exactly Where You Are",
+      "segments": [
+        {"text": "Your phone finds you using clocks in space.", "visual_query": "satellite orbit earth"},
+        {"text": "GPS uses a fleet of satellites orbiting about twenty thousand kilometers above Earth, each carrying extremely precise atomic clocks.", "visual_query": "satellite space"},
+        {"text": "Every satellite constantly broadcasts a simple message: which satellite it is, where it is, and the exact time the message was sent.", "visual_query": "radio antenna"},
+        {"text": "Your phone listens. Radio signals travel at the speed of light, so the tiny delay tells it how far away each satellite is.", "visual_query": "smartphone map"},
+        {"text": "With signals from at least four satellites, it can work out its position and correct its own clock at the same time.", "visual_query": "city map navigation"},
+        {"text": "The timing has to be incredibly precise. An error of just one millionth of a second would put you about three hundred meters off.", "visual_query": "clock gears"},
+        {"text": "Even relativity matters. The satellite clocks tick at a slightly different rate than clocks on the ground, and the system corrects for it.", "visual_query": "stars space"},
+        {"text": "So every map on your phone runs on space, light and time. Follow for more simple science.", "visual_query": "car navigation night"}
+      ],
+      "description": "How GPS uses satellites, atomic clocks and the speed of light to find your position.",
+      "hashtags": ["science", "technology", "gps", "space", "explained"]
+    }
+  ]
+}
