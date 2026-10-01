@@ -29,7 +29,7 @@ from autoshorts.script.llm import (
     extract_json,
     ollama_has_model,
 )
-from autoshorts.script.offline import OfflineGenerator, load_bank, match_score
+from autoshorts.script.offline import OfflineGenerator, load_bank, match_score, tokens
 from autoshorts.script.validate import (
     ScriptValidationError,
     clean_hashtags,
@@ -532,6 +532,21 @@ class TestOffline:
 
     def test_random_format_resolved(self, cfg):
         assert OfflineGenerator(cfg, rng=random.Random(1)).generate("", "random").format in FORMATS
+
+    @pytest.mark.parametrize("seed", range(5))
+    def test_random_format_follows_best_matching_entry(self, cfg, seed):
+        gen = OfflineGenerator(cfg, rng=random.Random(seed))
+        script = gen.generate("Strange facts about octopuses", "random")
+        assert script.format == "facts" and "Octopus" in script.title
+        assert gen.generate("How do airplanes fly", "random").format == "explainer"
+
+    def test_plurals_match_singulars(self):
+        for one, many in [("octopus", "octopuses"), ("plane", "planes"), ("glass", "glasses"),
+                          ("story", "stories"), ("box", "boxes"), ("season", "seasons"),
+                          ("house", "houses"), ("horse", "horses"), ("movie", "movies"), ("bus", "buses")]:
+            assert tokens(one) == tokens(many), (one, many)
+        entry = {"topic": "octopus ocean animals", "title": "The Octopus", "hashtags": [], "segments": []}
+        assert match_score("Strange facts about octopuses", entry) >= 4 + 3
 
     def test_match_score(self):
         entry = {"topic": "octopus ocean animals", "title": "The Octopus", "hashtags": ["octopus"], "segments": []}

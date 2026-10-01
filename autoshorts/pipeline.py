@@ -43,8 +43,12 @@ SAME_ERROR_LIMIT = 3  # a batch stops when this many videos in a row fail with t
 
 
 def resolve_format(fmt: str | None) -> str:
+    """A validated format name, or "random" left for the script generator to resolve
+    (the offline bank then picks the format that best matches the topic)."""
     from .script import resolve_format as _resolve
 
+    if (fmt or "random").strip().lower() == "random":
+        return "random"
     return _resolve(fmt)
 
 
@@ -369,7 +373,7 @@ def make_video(
                 job.topic = script.topic or job.topic
                 folder, work = job.folder, job.folder / "work"
             save_script(folder, script)
-            log.info("title: %s", script.title)
+            log.info("title: %s (%s)", script.title, script.format)
 
         with stage(f"Voice-over ({cfg.tts.provider})"):
             narration, script = _narrate(cfg, script, work, folder)

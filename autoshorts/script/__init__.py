@@ -11,7 +11,9 @@ Contract
 
 ``generate(topic, fmt)`` must return a valid VideoScript (see models.py) whose spoken
 length targets ``cfg.video.target_seconds`` (~2.6 spoken words per second), or raise
-AutoShortsError. ``fmt`` is one of FORMATS; "random" is resolved by the caller.
+AutoShortsError. ``fmt`` is one of FORMATS or "random": generators resolve "random"
+themselves (the offline bank picks the format of the entry that best matches the topic),
+and the returned script's ``format`` is always one of FORMATS.
 
 In ``auto`` mode the returned generator is a FallbackGenerator: if the chosen LLM fails
 at generation time, the next usable option (ending with offline) is tried, so batch

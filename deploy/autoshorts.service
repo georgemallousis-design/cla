@@ -10,6 +10,8 @@
 #
 # Change ExecStart to taste, e.g. "--upload youtube,tiktok", or "--no-upload" to only
 # render (review the videos in output/ and upload them with `autoshorts upload`).
+# Note: until your Google API project passes YouTube's audit, API uploads are locked
+# private and cannot be made public later (see README, "YouTube upload setup").
 # Exit code 3 (video made, upload failed) marks the run as failed on purpose, so it
 # shows up in `systemctl --failed`.
 

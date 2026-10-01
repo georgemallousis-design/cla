@@ -51,6 +51,10 @@ if [[ ! -f "${APP_DIR}/pyproject.toml" ]]; then
     echo "error: ${APP_DIR} does not look like the autoshorts repository" >&2
     exit 1
 fi
+if [[ "${APP_DIR}" =~ [[:space:]] ]]; then
+    echo "error: the repository path '${APP_DIR}' contains spaces; move it (e.g. to /opt/autoshorts)" >&2
+    exit 1
+fi
 
 step() { printf '\n==> %s\n' "$*"; }
 
@@ -88,6 +92,12 @@ chown -R "${RUN_USER}:${RUN_GROUP}" "${APP_DIR}"
 as_user() {
     runuser -u "${RUN_USER}" -- env HOME="${RUN_HOME}" "$@"
 }
+
+if ! as_user test -r "${APP_DIR}/pyproject.toml"; then
+    echo "error: user ${RUN_USER} cannot read ${APP_DIR} (a parent folder such as /root is private)." >&2
+    echo "       Move the repository, e.g.: sudo mv ${APP_DIR} /opt/autoshorts, and run the script from there." >&2
+    exit 1
+fi
 
 # --------------------------------------------------------------------------- 3. virtualenv
 step "Creating the virtualenv in ${APP_DIR}/.venv"

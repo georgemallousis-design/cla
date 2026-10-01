@@ -59,7 +59,7 @@ function Find-Python {
     foreach ($cand in $candidates) {
         if (-not (Get-Command $cand[0] -ErrorAction SilentlyContinue)) { continue }
         $exeArgs = @()
-        if ($cand.Count -gt 1) { $exeArgs = $cand[1..($cand.Count - 1)] }
+        if ($cand.Count -gt 1) { $exeArgs = @($cand[1..($cand.Count - 1)]) }
         try {
             $out = & $cand[0] @exeArgs -c "import sys; print('%d.%d' % sys.version_info[:2])" 2>$null
         } catch {
@@ -87,7 +87,7 @@ if (-not $python) {
 }
 $pyExe = $python[0]
 $pyArgs = @()
-if ($python.Count -gt 1) { $pyArgs = $python[1..($python.Count - 1)] }
+if ($python.Count -gt 1) { $pyArgs = @($python[1..($python.Count - 1)]) }
 Write-Host ("Using: " + (& $pyExe @pyArgs -c "import sys; print(sys.executable, sys.version.split()[0])"))
 
 # --------------------------------------------------------------------------- FFmpeg

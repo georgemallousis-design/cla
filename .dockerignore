@@ -1,0 +1,32 @@
+# Only the package and its templates go into the image; user data is mounted at /app/data.
+.git
+.github
+.gitignore
+.dockerignore
+Dockerfile
+**/__pycache__
+**/*.py[cod]
+*.egg-info
+.venv
+venv
+.pytest_cache
+.mypy_cache
+.ruff_cache
+
+# user data and secrets: never bake these into an image
+.env
+config.yaml
+topics.txt
+secrets
+output
+cache
+state
+data
+assets
+*.mp4
+*.mp3
+*.wav
+
+# not needed at runtime
+tests
+deploy

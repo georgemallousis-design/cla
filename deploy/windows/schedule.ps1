@@ -76,9 +76,19 @@ if ($Upload -eq "none" -or $Upload -eq "") { $uploadArgs = "--no-upload" }
 $command = "`"$exe`" batch -n $Count $uploadArgs >> `"$logFile`" 2>&1"
 $action = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/d /c `"$command`"" -WorkingDirectory $Repo
 
+# "powershell -File ... -At 09:00,18:00" passes one string "09:00,18:00": split it here.
+$times = @($At | ForEach-Object { $_ -split "," } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+if ($times.Count -eq 0) { throw "give at least one time with -At, e.g. -At 08:00,14:00,20:00" }
+$formats = [string[]]@("HH:mm", "H:mm")
+$culture = [System.Globalization.CultureInfo]::InvariantCulture
 $triggers = @()
-foreach ($time in $At) {
-    $triggers += New-ScheduledTaskTrigger -Daily -At ([datetime]::ParseExact($time.Trim(), [string[]]@("HH:mm", "H:mm"), [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::None))
+foreach ($time in $times) {
+    try {
+        $at = [datetime]::ParseExact($time, $formats, $culture, [System.Globalization.DateTimeStyles]::None)
+    } catch {
+        throw "invalid time '$time' (use the 24-hour clock, e.g. 08:00 or 20:30)"
+    }
+    $triggers += New-ScheduledTaskTrigger -Daily -At $at
 }
 
 $settings = New-ScheduledTaskSettingsSet `
@@ -100,7 +110,7 @@ Register-ScheduledTask -TaskName $TaskName `
     -Description "autoshorts: make $Count short video(s) per run ($uploadArgs). Log: $logFile" `
     -Action $action -Trigger $triggers -Settings $settings -Principal $principal -Force | Out-Null
 
-$when = ($At | ForEach-Object { $_.Trim() }) -join ", "
+$when = $times -join ", "
 Write-Host "Scheduled task '$TaskName' registered: daily at $when, running as $user." -ForegroundColor Green
 Write-Host "  command: autoshorts batch -n $Count $uploadArgs"
 Write-Host "  log:     $logFile"

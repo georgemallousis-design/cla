@@ -2,7 +2,8 @@
 
 No network, no API keys. The bank holds fact-checked, evergreen scripts for every
 format. A topic is matched by word overlap with each entry's topic, title, hashtags
-and text; unknown topics get a random entry of the requested format. Recently used
+and text; unknown topics get a random entry of the requested format. With format
+"random" the best-matching entry's format is used. Recently used
 entries are remembered in ``<state>/offline_used.json`` so batches do not repeat.
 """
 from __future__ import annotations
@@ -18,7 +19,7 @@ from typing import Any
 from ..config import Config
 from ..models import VideoScript
 from ..utils import AutoShortsError, ensure_dir, log
-from . import ScriptGenerator, resolve_format
+from . import FORMATS, ScriptGenerator, resolve_format
 from .validate import STOPWORDS, script_words, target_words, validate_script
 
 BANK_PATH = Path(__file__).resolve().parent.parent / "data" / "content_bank.json"
@@ -52,10 +53,21 @@ def load_bank(path: Path | None = None) -> list[dict[str, Any]]:
 
 
 def _stem(word: str) -> str:
-    for suffix in ("ies", "es", "s"):
-        if len(word) > len(suffix) + 2 and word.endswith(suffix):
-            return word[: -len(suffix)] + ("y" if suffix == "ies" else "")
-    return word
+    """Matching key shared by a word and its plural (never shown to anyone):
+    octopus/octopuses -> octopus, house/houses -> hous, story/stories -> stori.
+    Words that only look plural (octopus, glass, axis) keep their final s."""
+    w = word
+    if len(w) > 4 and w.endswith("ies"):
+        w = w[:-3] + "i"
+    elif len(w) > 4 and w.endswith("es") and w[:-2].endswith(("s", "x", "z", "ch", "sh")):
+        w = w[:-2]
+    elif len(w) > 3 and w.endswith("s") and not w.endswith(("ss", "us", "is")):
+        w = w[:-1]
+    if len(w) > 3 and w.endswith("e"):
+        w = w[:-1]
+    if len(w) > 3 and w.endswith("y"):
+        w = w[:-1] + "i"
+    return w
 
 
 def tokens(text: str) -> set[str]:
@@ -145,9 +157,21 @@ class OfflineGenerator(ScriptGenerator):
         pool = [e for e in pool if staleness(e) == freshest]
         return self.rng.choice(pool)
 
+    def pick_format(self, topic: str) -> str:
+        """Format for ``fmt="random"``: the format of the best-matching entry (so "octopus
+        facts" gets the octopus facts script, not a random quiz), else a random format."""
+        scored = [(match_score(topic, e), e.get("format")) for e in load_bank(self.bank_path)
+                  if e.get("format") in FORMATS]
+        best = max((score for score, _ in scored), default=0)
+        if best > 0:
+            return self.rng.choice(sorted({f for score, f in scored if score == best}))
+        return resolve_format("random", self.rng)
+
     def generate(self, topic: str, fmt: str) -> VideoScript:
-        fmt = resolve_format(fmt, self.rng)
         topic = topic or ""
+        if (fmt or "random").strip().lower() == "random":
+            fmt = self.pick_format(topic)
+        fmt = resolve_format(fmt, self.rng)
         if not self.cfg.script.language.lower().startswith("en"):
             log.warning("the offline content bank is English only (script.language=%s)", self.cfg.script.language)
         entry = self.choose(topic, fmt)

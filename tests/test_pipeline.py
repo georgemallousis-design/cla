@@ -13,6 +13,7 @@ from autoshorts.config import Config
 from autoshorts.models import (
     ClipAsset, Narration, RenderResult, Segment, TimedSegment, UploadResult, VideoScript, WordTiming,
 )
+from autoshorts.script import resolve_format
 from autoshorts.topics import TopicQueue
 from autoshorts.utils import AutoShortsError
 
@@ -55,6 +56,7 @@ class Fakes:
         self._check("script")
         if topic in self.fail_topics:
             raise AutoShortsError(f"no script for {topic}")
+        fmt = resolve_format(fmt)  # like real generators, which resolve "random" themselves
         segs = [Segment(text=f"Sentence number {i}.", visual_query=f"query {i}") for i in range(self.n_segments)]
         return VideoScript(topic=topic, format=fmt, title=f"Title about {topic}", segments=segs,
                            description="A description.", hashtags=["facts"])

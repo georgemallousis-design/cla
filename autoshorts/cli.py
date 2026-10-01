@@ -17,6 +17,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import traceback
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Sequence
@@ -367,7 +368,14 @@ def check_visuals(cfg: Config) -> list[Check]:
     rows.append(Check("OK", "local backgrounds", f"{count} file(s) in {local}",
                       "" if count else f"drop your own vertical clips/images into {cfg.visuals.local_dir}/"))
     if not have_stock and not count:
-        rows.append(Check("WARN", "backgrounds", "no stock keys and no local clips: only generated (abstract) backgrounds"))
+        enabled = [str(p).strip().lower() for p in cfg.visuals.providers]
+        # with pexels enabled, its key row above already says how to get a key
+        hint = "" if "pexels" in enabled else (
+            f"for real stock footage: free key at https://www.pexels.com/api/ -> "
+            f'{cfg.visuals.pexels_api_key_env}=... in .env, and add "pexels" to visuals.providers'
+        )
+        rows.append(Check("WARN", "backgrounds",
+                          "no stock keys and no local clips: only generated (abstract) backgrounds", hint))
     return rows
 
 
@@ -492,7 +500,13 @@ def print_checks(rows: Sequence[Check]) -> None:
 
 def cmd_doctor(args: argparse.Namespace) -> int:
     cfg = _load(args)
-    rows = run_checks(cfg, args.config)
+    level = log.level
+    if not args.verbose:  # the table says it all; keep INFO chatter from the checks out of it
+        log.setLevel(max(log.getEffectiveLevel(), logging.WARNING))
+    try:
+        rows = run_checks(cfg, args.config)
+    finally:
+        log.setLevel(level)
     print_checks(rows)
     return EXIT_FAIL if any(r.status == "FAIL" for r in rows) else EXIT_OK
 
@@ -645,8 +659,10 @@ def build_parser() -> argparse.ArgumentParser:
     _add_global_options(parser, suppress=False)
     sub = parser.add_subparsers(dest="command", metavar="COMMAND")
 
-    def add(name: str, func: Callable[[argparse.Namespace], int], help_text: str, **kw: Any) -> argparse.ArgumentParser:
-        p = sub.add_parser(name, help=help_text, description=help_text, epilog=EXIT_CODES,
+    def add(name: str, func: Callable[[argparse.Namespace], int], help_text: str, examples: str = "",
+            **kw: Any) -> argparse.ArgumentParser:
+        epilog = (f"examples:\n{examples}\n" if examples else "") + EXIT_CODES
+        p = sub.add_parser(name, help=help_text, description=help_text, epilog=epilog,
                            formatter_class=argparse.RawDescriptionHelpFormatter, **kw)
         _add_global_options(p, suppress=True)
         p.set_defaults(func=func)
@@ -655,12 +671,17 @@ def build_parser() -> argparse.ArgumentParser:
     add("init", cmd_init, "create config.yaml, .env and topics.txt (never overwrites)")
     add("doctor", cmd_doctor, "check FFmpeg, fonts, voices, script writer, API keys and upload setup")
 
-    p = add("make", cmd_make, "make one video")
+    p = add("make", cmd_make, "make one video", examples=(
+        "  autoshorts make\n"
+        "  autoshorts make --topic \"Why octopuses have three hearts\" --format facts\n"
+        "  autoshorts make --format quiz --upload youtube,tiktok\n"))
     p.add_argument("--topic", "-t", help="what the video is about (default: next topic from topics.txt)")
     p.add_argument("--format", "-f", help=FORMAT_HELP)
     _add_upload_options(p)
 
-    p = add("batch", cmd_batch, "make several videos in a row")
+    p = add("batch", cmd_batch, "make several videos in a row (topics from topics.txt)", examples=(
+        "  autoshorts batch -n 5\n"
+        "  autoshorts batch -n 3 --format story --upload youtube\n"))
     p.add_argument("-n", "--count", type=_positive_int, default=3, metavar="N", help="number of videos (default: 3)")
     p.add_argument("--format", "-f", help=FORMAT_HELP)
     _add_upload_options(p)
@@ -669,21 +690,28 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--topic", "-t", help="topic (default: next topic from topics.txt, not marked as used)")
     p.add_argument("--format", "-f", help=FORMAT_HELP)
 
-    p = add("upload", cmd_upload, "upload an existing job folder")
+    p = add("upload", cmd_upload, "upload an existing job folder", examples=(
+        "  autoshorts upload latest --to youtube,tiktok\n"
+        "  autoshorts upload output/20260101-120000-why-the-sky-is-blue --to tiktok\n"))
     p.add_argument("job_dir", metavar="JOB_DIR",
                    help="a folder in output/ containing video.mp4 and metadata.json, or 'latest'")
     p.add_argument("--to", metavar="PLATFORMS", default=None,
                    help=f"{PLATFORM_HELP} (default: platforms with upload.<platform>.enabled)")
 
-    p = add("auth", cmd_auth, "authorise uploads (one-time OAuth login)")
+    p = add("auth", cmd_auth, "authorise uploads (one-time OAuth login in your browser)", examples=(
+        "  autoshorts auth youtube    (needs upload.youtube.client_secrets, see the README)\n"))
     p.add_argument("platform", choices=["youtube"], help="platform to authorise")
 
-    p = add("topics", cmd_topics, "list or add video topics")
+    p = add("topics", cmd_topics, "list or add video topics", examples=(
+        "  autoshorts topics list --ideas\n"
+        "  autoshorts topics add \"How bees talk\" \"Why cats purr\"\n"))
     topics_sub = p.add_subparsers(dest="action", metavar="ACTION")
-    tl = topics_sub.add_parser("list", help="show topics and which are used")
+    tl = topics_sub.add_parser("list", help="show topics and which are used",
+                               description="show the topics in topics.txt and which are already used")
     tl.add_argument("--ideas", action="store_true", help="also list the unused built-in ideas")
     _add_global_options(tl, suppress=True)
-    ta = topics_sub.add_parser("add", help="append topics to topics.txt")
+    ta = topics_sub.add_parser("add", help="append topics to topics.txt",
+                               description="append topics to topics.txt (duplicates are skipped)")
     ta.add_argument("topics", nargs="+", metavar="TOPIC", help="topics to add (quote each one)")
     _add_global_options(ta, suppress=True)
 
@@ -718,6 +746,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     except KeyboardInterrupt:
         print("\ninterrupted", file=sys.stderr)
         return EXIT_INTERRUPTED
+    except Exception as exc:  # a bug or an unexpected system error: short message, details with -v
+        if getattr(args, "verbose", False):
+            traceback.print_exc()
+        print(f"error: unexpected {type(exc).__name__}: {exc}", file=sys.stderr)
+        print("(run again with -v for the full traceback; a failed video also has error.txt in its folder)",
+              file=sys.stderr)
+        return EXIT_FAIL
 
 
 if __name__ == "__main__":  # pragma: no cover

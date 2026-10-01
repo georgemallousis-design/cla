@@ -78,6 +78,18 @@ def test_bad_arguments_exit_2(capsys):
     assert exc.value.code == 2
 
 
+def test_unexpected_error_is_one_short_line(isolated, monkeypatch, capsys):
+    def boom(args):
+        raise ValueError("something odd")
+
+    monkeypatch.setattr(cli, "cmd_topics", boom)
+    assert cli.main(["topics"]) == cli.EXIT_FAIL
+    err = capsys.readouterr().err
+    assert "error: unexpected ValueError: something odd" in err and "Traceback" not in err
+    assert cli.main(["topics", "-v"]) == cli.EXIT_FAIL
+    assert "Traceback" in capsys.readouterr().err
+
+
 # --------------------------------------------------------------------------- init
 
 
