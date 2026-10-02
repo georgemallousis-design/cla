@@ -16,6 +16,7 @@ import requests
 from autoshorts.config import Config
 from autoshorts.models import Segment, VideoScript
 from autoshorts.script import (
+    CLASSIC_FORMATS,
     FORMATS,
     FallbackGenerator,
     ScriptGenerator,
@@ -505,7 +506,7 @@ class TestOpenAICompatible:
 
 
 class TestOffline:
-    @pytest.mark.parametrize("fmt", FORMATS)
+    @pytest.mark.parametrize("fmt", sorted({e["format"] for e in load_bank()}))
     def test_every_format(self, cfg, fmt):
         script = OfflineGenerator(cfg, rng=random.Random(0)).generate("", fmt)
         assert isinstance(script, VideoScript) and script.format == fmt
@@ -601,8 +602,8 @@ class TestContentBank:
     def test_size_and_formats(self):
         assert len(BANK) >= 30
         counts = Counter(e["format"] for e in BANK)
-        assert set(counts) == set(FORMATS)
-        assert all(counts[f] >= 4 for f in FORMATS), counts
+        assert set(counts) <= set(FORMATS)
+        assert all(counts[f] >= 4 for f in CLASSIC_FORMATS), counts
         assert len({e["title"] for e in BANK}) == len(BANK), "titles must be unique"
 
     @pytest.mark.parametrize("entry", BANK, ids=[e["title"][:40] for e in BANK])
@@ -617,7 +618,8 @@ class TestContentBank:
         assert script.hashtags == entry["hashtags"] and 3 <= len(entry["hashtags"]) <= 10
         assert script.description == entry["description"] and "#" not in entry["description"]
         words = script_words(script.segments)
-        assert 120 <= words <= 185, words
+        # reddit stories target a longer video (75 s in the reddit channel preset)
+        assert 120 <= words <= (215 if entry["format"] == "reddit" else 185), words
         assert 6 <= len(script.segments) <= 10
         assert count_words(script.hook) <= 12
         assert "in this video" not in script.hook.lower()
@@ -707,3 +709,32 @@ def test_resolve_format():
     assert resolve_format("random") in FORMATS
     with pytest.raises(AutoShortsError, match="unknown script format"):
         resolve_format("poem")
+
+
+def test_niche_formats_need_an_llm_offline(cfg):
+    with pytest.raises(AutoShortsError, match="LLM_API_KEY"):
+        OfflineGenerator(cfg, rng=random.Random(0)).generate("", "mystery")
+
+
+def test_random_picks_only_classic_formats():
+    rng = random.Random(3)
+    assert {resolve_format("random", rng) for _ in range(200)} == set(CLASSIC_FORMATS)
+    assert resolve_format("what-if") == "whatif"
+
+
+def test_reddit_prompt_asks_for_narrator(cfg):
+    text = prompts.system_prompt(cfg, "reddit")
+    assert '"narrator"' in text and "fictional" in text
+    assert '"narrator"' not in prompts.system_prompt(cfg, "facts")
+
+
+@pytest.mark.parametrize("value,expected", [("Female", "female"), ("M", "male"), ("woman", "female"), ("", ""),
+                                            ("robot", "")])
+def test_narrator_is_kept(value, expected):
+    data = {"title": "t", "narrator": value, "segments": [{"text": "one two three", "visual_query": "x"}] * 4}
+    assert validate_script(data, topic="t", fmt="reddit", target_words=10).narrator == expected
+
+
+def test_offline_reddit_script_has_a_narrator(cfg):
+    script = OfflineGenerator(cfg, rng=random.Random(0)).generate("", "reddit")
+    assert script.format == "reddit" and script.narrator in ("male", "female")

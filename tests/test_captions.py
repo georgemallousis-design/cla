@@ -415,7 +415,7 @@ def test_styles_use_unicode_bidi_encoding(tmp_path):
     cfg = Config(base_dir=tmp_path)
     lines = captions._header(cfg, captions._layout(cfg), "שלום עולם")
     styles = [line for line in lines if line.startswith("Style:")]
-    assert len(styles) == 2 and all(line.endswith(",-1") for line in styles)
+    assert len(styles) == 3 and all(line.endswith(",-1") for line in styles)
 
 
 def test_cjk_characters_are_measured_full_width():

@@ -33,9 +33,9 @@ _DECODES: dict[tuple[str, int, int], bool] = {}
 class LocalProvider(VisualProvider):
     name = "local"
 
-    def __init__(self, cfg: Config, rng: random.Random | None = None):
+    def __init__(self, cfg: Config, rng: random.Random | None = None, root: Path | None = None):
         super().__init__(cfg)
-        self.root = cfg.path(cfg.visuals.local_dir)
+        self.root = root if root is not None else cfg.path(cfg.visuals.local_dir)
         self.rng = rng or random.Random()
         self._files: list[Path] | None = None
 

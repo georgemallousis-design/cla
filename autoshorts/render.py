@@ -239,7 +239,10 @@ def shot_input_args(clip: ClipAsset, index: int, seconds: float, src_duration: f
         # image2 without a pattern reads exactly this file, even if its name contains '%'.
         return ["-f", "image2", "-pattern_type", "none", "-i", path]
     if src_duration is not None and src_duration >= seconds + LOOP_MARGIN:
-        offset = clip_offset(index, Path(clip.path).name, seconds, src_duration)
+        if clip.start_offset is not None:  # chosen by the planner (continuous gameplay)
+            offset = round(min(max(clip.start_offset, 0.0), src_duration - seconds - LOOP_MARGIN), 3)
+        else:
+            offset = clip_offset(index, Path(clip.path).name, seconds, src_duration)
         return (["-ss", f"{offset:.3f}"] if offset > 0 else []) + ["-i", path]
     return ["-stream_loop", "-1", "-i", path]
 

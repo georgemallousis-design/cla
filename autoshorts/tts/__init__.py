@@ -22,6 +22,7 @@ Extras: ``check_engines()`` reports which engines can run here (for ``doctor``);
 """
 from __future__ import annotations
 
+import copy
 import re
 import sys
 import wave
@@ -191,7 +192,7 @@ def synthesize_narration(cfg: Config, script: VideoScript, workdir: Path) -> Nar
     texts = [_speakable(s.text) for s in script.segments]
     if not any(texts):
         raise AutoShortsError("the script has no text to speak")
-    engine = get_engine(cfg)
+    engine = get_engine(narrator_config(cfg, script.narrator))
     while True:
         try:
             results = [
@@ -209,6 +210,19 @@ def synthesize_narration(cfg: Config, script: VideoScript, workdir: Path) -> Nar
     log.info("narration: %.1fs, %d words, %d segments (engine: %s)",
              narration.duration, len(narration.words), len(narration.segments), narration.engine)
     return narration
+
+
+def narrator_config(cfg: Config, narrator: str) -> Config:
+    """``cfg`` with the female voices swapped in when the script's narrator is a woman."""
+    if (narrator or "").lower() != "female":
+        return cfg
+    voiced = copy.deepcopy(cfg)
+    if cfg.tts.edge.voice_female:
+        voiced.tts.edge.voice = cfg.tts.edge.voice_female
+    if cfg.tts.pyttsx3.voice_female:
+        voiced.tts.pyttsx3.voice = cfg.tts.pyttsx3.voice_female
+    log.info("narrator is female: voice %s", voiced.tts.edge.voice)
+    return voiced
 
 
 def _to_pcm(src: Path, dst: Path) -> bytes:

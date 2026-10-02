@@ -61,6 +61,8 @@ class ScriptConfig:
 @dataclass
 class EdgeTTSConfig:
     voice: str = "en-US-AndrewNeural"
+    # Used instead of ``voice`` when the script says the narrator is a woman (reddit format).
+    voice_female: str = "en-US-AvaNeural"
     rate: str = "+5%"
     pitch: str = "+0Hz"
     volume: str = "+0%"
@@ -76,6 +78,7 @@ class EspeakConfig:
 class Pyttsx3Config:
     rate: int = 185
     voice: str | None = None  # substring of a voice name/id, None = system default
+    voice_female: str | None = "Zira"  # Windows' built-in female voice; used for female narrators
 
 
 @dataclass
@@ -96,6 +99,11 @@ class VisualsConfig:
     local_dir: str = "assets/backgrounds"
     cache_dir: str = "cache/clips"
     max_shot_seconds: float = 4.0  # long segments are split into several shots
+    # cuts: a new stock/local shot every few seconds.
+    # continuous: one long clip from gameplay_dir (e.g. Minecraft parkour) behind the
+    #             whole video, starting at a random point; falls back to cuts if empty.
+    style: str = "cuts"
+    gameplay_dir: str = "assets/gameplay"
     timeout: int = 60
 
 
@@ -116,6 +124,15 @@ class CaptionsConfig:
     pop: bool = True  # small scale-in animation per caption
     show_title: bool = True  # hook/title banner at the top for the first seconds
     title_seconds: float = 3.0
+    # Story card (reddit format): a post-style card with the channel name and the title,
+    # shown while the title is read; replaces the title banner.
+    card: bool = False
+
+
+@dataclass
+class ChannelConfig:
+    name: str = ""  # shown on the story card, e.g. "Midnight Stories"
+    avatar_color: str = "#FF4500"  # colour of the round avatar on the card
 
 
 @dataclass
@@ -177,6 +194,9 @@ class TopicsConfig:
     file: str = "topics.txt"  # one topic per line; '#' comments allowed
     state_file: str = "state/used_topics.json"
     allow_repeats: bool = False
+    # When topics.txt is used up: "builtin" picks from the general built-in ideas list;
+    # "llm" lets the script writer invent a fresh topic for the format (needs an LLM).
+    when_empty: str = "builtin"
 
 
 @dataclass
@@ -184,6 +204,7 @@ class Config:
     output_dir: str = "output"
     log_level: str = "INFO"
     keep_intermediate: bool = False  # keep per-segment audio, shots, etc.
+    channel: ChannelConfig = field(default_factory=ChannelConfig)
     video: VideoConfig = field(default_factory=VideoConfig)
     script: ScriptConfig = field(default_factory=ScriptConfig)
     tts: TTSConfig = field(default_factory=TTSConfig)
@@ -254,6 +275,14 @@ def load_config(path: str | Path | None = None) -> Config:
                 f"{env_file} is not UTF-8 text (PowerShell 5.1's '>' writes UTF-16); re-save it as UTF-8, "
                 "e.g. in Notepad: File > Save as > Encoding UTF-8"
             ) from exc
+        # Shared keys (Pexels, LLM...) can live in a .env next to where the command runs,
+        # so several channel folders don't each need a copy. The channel's own .env wins.
+        shared_env = Path.cwd() / ".env"
+        if shared_env.resolve() != env_file.resolve() and shared_env.is_file():
+            try:
+                load_dotenv(shared_env, override=False, encoding="utf-8-sig")
+            except UnicodeDecodeError as exc:
+                raise ValueError(f"{shared_env} is not UTF-8 text; re-save it as UTF-8") from exc
 
     data: dict[str, Any] = {}
     if cfg_path.exists():

@@ -294,4 +294,15 @@ def validate_script(
         description=description,
         hashtags=hashtags,
         language=language,
+        narrator=clean_narrator(data.get("narrator")),
     )
+
+
+def clean_narrator(value: Any) -> str:
+    """'male' / 'female' from whatever the LLM wrote ("Female", "woman", "F"...), else ''."""
+    word = str(value or "").strip().lower()
+    if word in ("female", "woman", "girl", "f", "she", "her"):
+        return "female"
+    if word in ("male", "man", "boy", "m", "he", "him"):
+        return "male"
+    return ""

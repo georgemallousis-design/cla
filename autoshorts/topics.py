@@ -173,6 +173,11 @@ class TopicQueue:
             if key not in used and key not in skip:
                 return topic
 
+        if (self.cfg.topics.when_empty or "builtin").strip().lower() == "llm":
+            # An empty topic lets the script writer invent a fresh one for the format.
+            log.info("topics: %s is used up; the script writer will choose a new topic", self.file.name)
+            return ""
+
         user_keys = {topic_key(t) for t in mine}
         ideas = [
             t for t in builtin_ideas()

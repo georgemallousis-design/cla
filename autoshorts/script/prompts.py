@@ -24,6 +24,12 @@ JSON_SHAPE = (
     '"description": "...", "hashtags": ["...", "..."]}'
 )
 
+# The reddit format also says who tells the story, so the matching voice can be used.
+REDDIT_JSON_SHAPE = (
+    '{"title": "...", "narrator": "male or female", "segments": [{"text": "...", "visual_query": "..."}], '
+    '"description": "...", "hashtags": ["...", "..."]}'
+)
+
 FORMAT_GUIDES = {
     "facts": (
         "FORMAT: FACTS. Give 5-8 surprising facts about the topic, one fact per segment, each "
@@ -60,7 +66,54 @@ FORMAT_GUIDES = {
         "and effect in plain words and one everyday analogy. Use only well-established science or "
         "history. The final segment delivers the 'aha' answer to the hook's question."
     ),
+    "reddit": (
+        "FORMAT: REDDIT. An ORIGINAL, invented first-person story in the style of a popular Reddit "
+        "post (Am I the jerk?, petty or pro revenge, family drama, wedding drama, workplace drama, "
+        "roommate or neighbour stories). segments[0] is the post title read aloud and written like "
+        "a real post title, for example 'Am I wrong for refusing to give my sister my wedding dress?' "
+        "Never write 'AITA' or 'TIFU'; spell such phrases out. Then: quick context with the narrator's "
+        "age written as words ('I'm a twenty-six year old woman'), an escalating conflict with "
+        "specific believable details and short quoted dialogue, a twist or satisfying payoff near the "
+        "end, and a final segment that asks viewers to judge ('So, was I wrong? Tell me in the "
+        "comments.') before 'Follow for more.' Every person, place and event is invented: no real "
+        "people, brands, companies or identifiable places. Keep it PG-13: no sexual content, no "
+        "graphic violence, no self-harm, no slurs. Add a top-level JSON field \"narrator\" with "
+        "\"male\" or \"female\" matching the storyteller. visual_query: calm, generic b-roll that fits "
+        "the mood (for example 'rain on window', 'city night drive', 'kitchen table'). The "
+        "description must say it is an original fictional story."
+    ),
+    "whatif": (
+        "FORMAT: WHATIF (what if). Answer a hypothetical 'What would happen if...' question using real, "
+        "well-established science. The hook poses the scenario dramatically. Walk through the "
+        "consequences in time order (the first seconds, hours, days, years), one step per segment, "
+        "each grounded in accepted physics, biology or geography, with vivid but accurate images. "
+        "When something is uncertain, say so plainly instead of inventing numbers. Save the most "
+        "surprising consequence for near the end, then ask viewers what they would do."
+    ),
+    "mystery": (
+        "FORMAT: MYSTERY. A real, well-documented historical mystery, strange event or unexplained "
+        "discovery (for example the Mary Celeste, the Voynich manuscript, the Dancing Plague of "
+        "1518). Use only facts recorded by reliable historical sources; present theories as theories "
+        "and say which explanation most historians or scientists favour. Nothing about crimes "
+        "involving private individuals from the last fifty years, no accusations against real living "
+        "people, no gore, no supernatural claims stated as fact. Build suspense: hook, the eerie "
+        "facts, the main theories, the detail that still puzzles experts. End by asking viewers for "
+        "their theory."
+    ),
+    "psychology": (
+        "FORMAT: PSYCHOLOGY. One well-established psychology concept, effect or everyday behaviour "
+        "pattern (for example the spotlight effect, the Zeigarnik effect, the Ben Franklin effect), "
+        "spoken to the viewer as 'you'. Name the effect, describe it accurately, give two or three "
+        "relatable everyday examples and one practical tip. Only mention research findings that are "
+        "widely replicated, and never invent statistics. Never diagnose anyone, no mental-health or "
+        "therapy advice, no manipulation or dating tactics. End with a line that makes viewers want "
+        "to send it to a friend."
+    ),
 }
+
+
+def json_shape(fmt: str) -> str:
+    return REDDIT_JSON_SHAPE if fmt == "reddit" else JSON_SHAPE
 
 
 def language_name(code: str) -> str:
@@ -83,7 +136,7 @@ def system_prompt(cfg: Config, fmt: str) -> str:
 A text-to-speech voice reads the script over stock footage with big word-by-word captions.
 
 Reply with ONLY one valid JSON object, no markdown, no code fences, no comments, exactly this shape:
-{JSON_SHAPE}
+{json_shape(fmt)}
 
 RULES
 - Language: write title, every segment text, description and hashtags in {lang}. visual_query is always English.
@@ -126,11 +179,11 @@ def build_messages(cfg: Config, topic: str, fmt: str) -> list[dict[str, str]]:
     ]
 
 
-def repair_prompt(cfg: Config, error: str) -> str:
+def repair_prompt(cfg: Config, error: str, fmt: str = "") -> str:
     """Follow-up message after an unusable reply; ``error`` explains what was wrong."""
     lo, hi = word_range(target_words(cfg))
     return (
         f"That reply could not be used: {error}\n"
-        f"Reply again with ONLY the corrected JSON object in this shape: {JSON_SHAPE}. "
+        f"Reply again with ONLY the corrected JSON object in this shape: {json_shape(fmt)}. "
         f"Keep {lo}-{hi} spoken words across 6-10 segments."
     )

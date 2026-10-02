@@ -1,0 +1,41 @@
+# One topic per line. Used topics are remembered in state/used_topics.json.
+The spotlight effect
+The Zeigarnik effect
+The Ben Franklin effect
+The Dunning-Kruger effect
+The mere exposure effect
+The Baader-Meinhof phenomenon
+The bystander effect
+The anchoring effect
+Confirmation bias
+The halo effect
+The IKEA effect
+The paradox of choice
+Decision fatigue
+The peak-end rule
+The pratfall effect
+The doorway effect
+The cocktail party effect
+Loss aversion
+The planning fallacy
+The sunk cost fallacy
+The placebo effect
+The serial position effect
+The curse of knowledge
+The Google effect on memory
+The fresh start effect
+The decoy effect
+Social proof
+The endowment effect
+The illusion of transparency
+The negativity bias
+The availability heuristic
+The hot-cold empathy gap
+The false consensus effect
+The mere ownership effect
+Why we remember embarrassing moments
+Why music gives you chills
+Why yawning is contagious
+Why time flies as you get older
+Why we procrastinate
+Why songs get stuck in your head

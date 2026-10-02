@@ -11,6 +11,11 @@ output_dir: output            # one folder per video: output/<YYYYMMDD-HHMMSS>-<
 log_level: INFO               # DEBUG | INFO | WARNING | ERROR  (`-v` on the command line = DEBUG)
 keep_intermediate: false      # true keeps <job>/work/ (per-segment audio, shots) for debugging
 
+# Shown on the story card (captions.card). Several channels? See "autoshorts channels init".
+channel:
+  name: ""                    # e.g. "Midnight Story Time"
+  avatar_color: "#FF4500"     # colour of the round avatar on the card
+
 # --------------------------------------------------------------------------- video
 video:
   width: 1080                 # 1080x1920 = 9:16 vertical, what TikTok and Shorts expect
@@ -26,6 +31,9 @@ video:
 
 # --------------------------------------------------------------------------- script writer
 script:
+  # format: facts | story | quiz | motivation | explainer | random (any of those),
+  #         or a niche format: reddit | whatif | mystery | psychology (these need an LLM,
+  #         except a few built-in reddit/whatif scripts)
   # auto: Ollama (if running and the model is pulled) -> openai_compatible (if the API
   #       key is set) -> offline. If the LLM fails mid-batch, the next one is used.
   # ollama | openai_compatible | offline: use exactly that one (no silent fallback).
@@ -65,6 +73,7 @@ tts:
   # Free Microsoft Edge neural voices (needs internet). List them: `autoshorts voices --lang en`
   edge:
     voice: en-US-AndrewNeural # e.g. en-US-AriaNeural, en-US-GuyNeural, en-GB-RyanNeural
+    voice_female: en-US-AvaNeural  # used when a reddit story's narrator is a woman
     rate: "+5%"               # speaking speed, e.g. "-10%", "+15%"
     pitch: "+0Hz"             # e.g. "-5Hz", "+10Hz"
     volume: "+0%"
@@ -78,6 +87,7 @@ tts:
   pyttsx3:
     rate: 185                 # words per minute
     voice: null               # part of a voice name/id, e.g. "Zira"; null = system default
+    voice_female: Zira        # female narrators (Windows' built-in female voice)
 
 # --------------------------------------------------------------------------- background footage
 visuals:
@@ -89,6 +99,8 @@ visuals:
   local_dir: assets/backgrounds         # your own clips/images (.mp4 .mov .mkv .webm .m4v .jpg .png .webp)
   cache_dir: cache/clips                # downloaded and generated clips are reused from here
   max_shot_seconds: 4.0                 # long segments are split into several shots
+  style: cuts                           # cuts | continuous (one gameplay clip behind the whole video)
+  gameplay_dir: assets/gameplay         # clips for style continuous, e.g. your own Minecraft parkour recording
   timeout: 60                           # seconds per stock-site request/download
 
 # --------------------------------------------------------------------------- captions
@@ -108,6 +120,7 @@ captions:
   pop: true                   # small scale-in animation for each new caption
   show_title: true            # show the hook/title banner at the top...
   title_seconds: 3.0          # ...for this many seconds
+  card: false                 # reddit-style story card (channel name + title) instead of the banner
 
 # --------------------------------------------------------------------------- background music
 music:
@@ -155,6 +168,7 @@ topics:
   file: topics.txt            # one topic per line, '#' comments allowed
   state_file: state/used_topics.json  # remembers which topics already became videos
   allow_repeats: false        # true: reuse the oldest topics when everything is used
+  when_empty: builtin         # topics.txt used up: builtin = general idea list, llm = the AI invents topics
 
 # --------------------------------------------------------------------------- housekeeping
 # Runs before every video so an unattended server never fills its disk.

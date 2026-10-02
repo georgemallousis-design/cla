@@ -21,8 +21,10 @@ simpler fallback query when a segment's visual_query finds nothing on stock site
 from __future__ import annotations
 
 import json
+import logging
 import math
 import os
+import random
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -37,6 +39,8 @@ PROVIDER_NAMES = ("pexels", "pixabay", "local", "generated")
 # Segments shorter than this (e.g. a lone "Wow.") are merged into a neighbour so no
 # shot is only a few frames long.
 MIN_WINDOW_SECONDS = 0.25
+# Continuous backgrounds start early enough in the clip to also cover the outro.
+CONTINUOUS_MARGIN = 5.0
 
 _STOPWORDS = frozenset(
     """a an the and or but of in on at to for from by with without into onto over under
@@ -355,6 +359,14 @@ def plan_shots(cfg: Config, narration: Narration, workdir: Path, *, topic: str =
     duration = float(narration.duration)
     if duration <= 0:
         raise AutoShortsError("cannot plan visuals for a narration with no duration")
+    style = (cfg.visuals.style or "cuts").strip().lower()
+    if style == "continuous":
+        shots = continuous_shots(cfg, duration)
+        if shots:
+            _write_plan(workdir, shots)
+            return shots
+    elif style != "cuts":
+        raise AutoShortsError(f"unknown visuals.style '{cfg.visuals.style}'; use 'cuts' or 'continuous'")
     windows = segment_windows(narration)
     max_shot = float(cfg.visuals.max_shot_seconds or 0)
 
@@ -381,6 +393,31 @@ def plan_shots(cfg: Config, narration: Narration, workdir: Path, *, topic: str =
     sources = sorted({s.clip.source or "?" for s in shots})
     log.info("visuals: %d shots over %.1fs from %s", len(shots), duration, ", ".join(sources))
     return shots
+
+
+def continuous_shots(cfg: Config, duration: float, rng: random.Random | None = None) -> list[Shot]:
+    """One long gameplay clip behind the whole video, starting at a random point.
+
+    Picks a video from ``visuals.gameplay_dir`` (preferring clips long enough to need no
+    loop); returns [] when the folder has no usable video, so plan_shots falls back to cuts.
+    """
+    from .local import LocalProvider
+
+    rng = rng or random.Random()
+    root = cfg.path(cfg.visuals.gameplay_dir)
+    clips = [c for c in LocalProvider(cfg, rng=rng, root=root).search("", duration, count=50) if c.kind == "video"]
+    if not clips:
+        log_once(f"no-gameplay:{root}", logging.WARNING,
+                 "visuals: style 'continuous' but no videos in %s; using normal cuts instead. "
+                 "Record some gameplay (e.g. Minecraft parkour with Win+G) and put it there.", root)
+        return []
+    needed = duration + CONTINUOUS_MARGIN
+    long_enough = [c for c in clips if (c.duration or 0) >= needed]
+    clip = rng.choice(long_enough or clips)
+    room = (clip.duration or 0) - needed
+    clip.start_offset = round(rng.uniform(0.0, room), 3) if room > 0 else 0.0
+    log.info("visuals: continuous background %s from %.1fs", Path(clip.path).name, clip.start_offset)
+    return [Shot(clip=clip, start=0.0, end=duration)]
 
 
 def _segment_query(segment: Segment | None, topic: str) -> str:

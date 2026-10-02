@@ -42,7 +42,8 @@ DATA_DIR = Path(__file__).resolve().parent / "data"
 # (non-editable) "pip install ." can still run "autoshorts init". The root files are the
 # source of truth; tests/test_cli.py checks the copies are identical.
 TEMPLATES_DIR = DATA_DIR / "templates"
-FORMAT_HELP = "facts, story, quiz, motivation, explainer or random (default: script.format in config)"
+FORMAT_HELP = ("facts, story, quiz, motivation, explainer, reddit, whatif, mystery, psychology or random "
+               "(default: script.format in config)")
 PLATFORM_HELP = "comma-separated: youtube,tiktok"
 
 EXIT_CODES = """\
@@ -697,6 +698,51 @@ def cmd_voices(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def cmd_channels(args: argparse.Namespace) -> int:
+    from . import channels
+
+    root = Path.cwd() / channels.CHANNELS_DIR
+    action = getattr(args, "action", None) or "list"
+    if action == "init":
+        created = channels.init_channels(root, args.names)
+        for path in created:
+            print(f"created {path}")
+        print(f"\n{len(channels.channel_dirs(root))} channel(s) in {root}.")
+        print("Next: set each channel's name in channels/<name>/config.yaml (channel.name), then try:\n"
+              "  autoshorts --config channels/reddit/config.yaml make\n"
+              "  autoshorts run-all")
+        return EXIT_OK
+    dirs = channels.channel_dirs(root)
+    if not dirs:
+        print(f"no channels yet. Create them with: autoshorts channels init   (presets: {', '.join(channels.presets())})")
+        return EXIT_OK
+    for d in dirs:
+        try:
+            cfg = load_config(d / "config.yaml")
+            from .topics import TopicQueue
+
+            left = len(TopicQueue(cfg).unused())
+            print(f"{d.name:12}  {cfg.channel.name or '-':24}  format {cfg.script.format:10}  {left} topic(s) left")
+        except Exception as exc:  # show the broken channel, keep listing the rest
+            print(f"{d.name:12}  error: {exc}")
+    return EXIT_OK
+
+
+def cmd_run_all(args: argparse.Namespace) -> int:
+    from . import channels
+
+    root = Path.cwd() / channels.CHANNELS_DIR
+    results = channels.run_all(root, args.count, only=args.only or (), upload=args.upload,
+                               no_upload=args.no_upload, verbose=bool(getattr(args, "verbose", False)))
+    print("\nchannels:")
+    for name, code in results.items():
+        status = {EXIT_OK: "ok", EXIT_PARTIAL: "made, upload failed"}.get(code, f"failed (exit {code})")
+        print(f"  {name:12} {status}")
+    if all(code == EXIT_OK for code in results.values()):
+        return EXIT_OK
+    return EXIT_ERROR if all(code not in (EXIT_OK, EXIT_PARTIAL) for code in results.values()) else EXIT_PARTIAL
+
+
 # --------------------------------------------------------------------------- parser
 
 
@@ -781,6 +827,27 @@ def build_parser() -> argparse.ArgumentParser:
                                description="append topics to topics.txt (duplicates are skipped)")
     ta.add_argument("topics", nargs="+", metavar="TOPIC", help="topics to add (quote each one)")
     _add_global_options(ta, suppress=True)
+
+    p = add("channels", cmd_channels, "set up and list channels (one folder per channel in ./channels)", examples=(
+        "  autoshorts channels init                  all presets: " + "reddit, whatif, mystery, psychology, quiz\n"
+        "  autoshorts channels init reddit whatif    only these\n"
+        "  autoshorts channels list\n"
+        "  autoshorts --config channels/reddit/config.yaml make\n"))
+    channels_sub = p.add_subparsers(dest="action", metavar="ACTION")
+    ci = channels_sub.add_parser("init", help="create channel folders from the presets (never overwrites)")
+    ci.add_argument("names", nargs="*", metavar="PRESET", help="presets to create (default: all)")
+    _add_global_options(ci, suppress=True)
+    cl = channels_sub.add_parser("list", help="show channels and how many topics each has left")
+    _add_global_options(cl, suppress=True)
+
+    p = add("run-all", cmd_run_all, "make videos for every channel (what the daily schedule runs)", examples=(
+        "  autoshorts run-all                      one video per channel\n"
+        "  autoshorts run-all -n 2 --only reddit whatif\n"
+        "  autoshorts run-all --upload tiktok\n"))
+    p.add_argument("-n", "--count", type=_positive_int, default=1, metavar="N",
+                   help="videos per channel (default: 1)")
+    p.add_argument("--only", nargs="+", metavar="CHANNEL", help="only these channels")
+    _add_upload_options(p)
 
     p = add("voices", cmd_voices, "list edge-tts voices (needs internet)")
     p.add_argument("--lang", "-l", default=None, help="language/locale prefix, e.g. en, en-GB, es; 'all' for every voice "

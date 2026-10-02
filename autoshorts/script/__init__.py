@@ -28,7 +28,11 @@ from ..config import Config
 from ..models import VideoScript
 from ..utils import AutoShortsError, log
 
-FORMATS = ("facts", "story", "quiz", "motivation", "explainer")
+# Formats "random" chooses from (all covered by the offline content bank).
+CLASSIC_FORMATS = ("facts", "story", "quiz", "motivation", "explainer")
+# Niche formats, picked explicitly per channel; mystery/psychology need an LLM.
+NICHE_FORMATS = ("reddit", "whatif", "mystery", "psychology")
+FORMATS = CLASSIC_FORMATS + NICHE_FORMATS
 PROVIDERS = ("auto", "ollama", "openai_compatible", "offline")
 
 
@@ -43,10 +47,10 @@ class ScriptGenerator(ABC):
 
 
 def resolve_format(fmt: str | None, rng: random.Random | None = None) -> str:
-    """Validate ``fmt``; None/""/"random" picks one of FORMATS at random."""
-    value = (fmt or "random").strip().lower()
+    """Validate ``fmt``; None/""/"random" picks one of CLASSIC_FORMATS at random."""
+    value = (fmt or "random").strip().lower().replace("-", "").replace("_", "")
     if value == "random":
-        return (rng or random).choice(FORMATS)
+        return (rng or random).choice(CLASSIC_FORMATS)
     if value not in FORMATS:
         raise AutoShortsError(f"unknown script format '{fmt}'; use one of: {', '.join(FORMATS)}, random")
     return value

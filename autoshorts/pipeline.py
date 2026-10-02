@@ -389,6 +389,10 @@ def make_video(
                 _move_job(cfg, job, script.title or script.topic)
                 job.topic = script.topic or job.topic
                 folder, work = job.folder, job.folder / "work"
+            if not topic:  # the script writer chose the topic (topics.when_empty: llm)
+                _move_job(cfg, job, script.title or script.topic)
+                job.topic = script.topic or script.title
+                folder, work = job.folder, job.folder / "work"
             save_script(folder, script)
             log.info("title: %s (%s)", script.title, script.format)
 
@@ -425,8 +429,8 @@ def make_video(
 
     # The video exists from here on: nothing below may turn it into a failure.
     try:
-        if on_topic:
-            queue.mark_used(topic)
+        if on_topic and job.topic:
+            queue.mark_used(job.topic)
     except OSError as exc:
         log.warning("could not record %r as used in %s: %s", topic, queue.state_file, exc)
     if platforms and _offline_fallback(cfg, job.script):

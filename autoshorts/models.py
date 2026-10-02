@@ -28,6 +28,7 @@ class VideoScript:
     description: str  # 1-3 sentences, no hashtags
     hashtags: list[str] = field(default_factory=list)  # lowercase, no leading '#'
     language: str = "en"
+    narrator: str = ""  # "male" | "female" | "" (reddit format picks the voice from this)
 
     @property
     def hook(self) -> str:
@@ -50,6 +51,7 @@ class VideoScript:
             description=d.get("description", ""),
             hashtags=list(d.get("hashtags", [])),
             language=d.get("language", "en"),
+            narrator=d.get("narrator", "") or "",
         )
 
 
@@ -99,6 +101,7 @@ class ClipAsset:
     attribution: str = ""  # e.g. "Video by Jane Doe on Pexels"
     width: int | None = None
     height: int | None = None
+    start_offset: float | None = None  # where to start inside a long video; None = renderer decides
 
 
 @dataclass

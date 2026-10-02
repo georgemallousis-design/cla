@@ -19,7 +19,7 @@ from typing import Any
 from ..config import Config
 from ..models import VideoScript
 from ..utils import AutoShortsError, ensure_dir, log
-from . import FORMATS, ScriptGenerator, resolve_format
+from . import CLASSIC_FORMATS, ScriptGenerator, resolve_format
 from .validate import STOPWORDS, script_words, target_words, validate_script
 
 BANK_PATH = Path(__file__).resolve().parent.parent / "data" / "content_bank.json"
@@ -129,7 +129,10 @@ class OfflineGenerator(ScriptGenerator):
         """Best entry of format ``fmt`` for ``topic``, avoiding recently used ones."""
         candidates = [e for e in load_bank(self.bank_path) if e.get("format") == fmt]
         if not candidates:
-            raise AutoShortsError(f"the offline content bank has no '{fmt}' scripts")
+            raise AutoShortsError(
+                f"the offline content bank has no '{fmt}' scripts; this format needs an AI script writer: "
+                "set LLM_API_KEY in .env (free key: https://console.groq.com/keys) or install Ollama"
+            )
         used = self._used()
         last = used[-1] if used else None
 
@@ -168,7 +171,7 @@ class OfflineGenerator(ScriptGenerator):
         """Format for ``fmt="random"``: the format of the best-matching entry (so "octopus
         facts" gets the octopus facts script, not a random quiz), else a random format."""
         scored = [(match_score(topic, e), e.get("format")) for e in load_bank(self.bank_path)
-                  if e.get("format") in FORMATS]
+                  if e.get("format") in CLASSIC_FORMATS]
         best = max((score for score, _ in scored), default=0)
         if best > 0:
             return self.rng.choice(sorted({f for score, f in scored if score == best}))

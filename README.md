@@ -24,6 +24,7 @@ No paid subscription is required.
 - [Install](#install) ([Windows](#windows-10--11) / [macOS](#macos) / [Linux](#linux-ubuntu--debian))
 - [Quickstart](#quickstart)
 - [Everyday use](#everyday-use)
+- [Several channels (Reddit stories, What if, ...)](#several-channels)
 - [Getting free API keys](#getting-free-api-keys)
 - [Your own backgrounds, music and fonts](#your-own-backgrounds-music-and-fonts)
 - [YouTube upload setup](#youtube-upload-setup)
@@ -359,6 +360,63 @@ Exit codes (for scripts and schedulers):
 | 2 | error: bad config or arguments, missing tool, the video failed |
 | 3 | the video was made, but an upload (or some videos of a batch) failed |
 | 130 | interrupted with Ctrl+C |
+
+## Several channels
+
+One install can feed several channels, each with its own niche, voice, captions, topics and
+upload logins. Five ready-made channel presets are included:
+
+| Preset | Format | What the videos are |
+|---|---|---|
+| `reddit` | `reddit` | Original, AI-written stories in the style of popular Reddit posts ("Am I wrong for..."), told over **your own gameplay footage**, with a post-style title card, a male or female voice to match the narrator and 2-word captions |
+| `whatif` | `whatif` | "What would happen if..." science scenarios over stock footage |
+| `mystery` | `mystery` | Real, well-documented historical mysteries |
+| `psychology` | `psychology` | Everyday psychology effects ("the spotlight effect") |
+| `quiz` | `quiz` | Trivia quizzes with a pause before each answer |
+
+```powershell
+autoshorts channels init                 # creates channels\reddit, channels\whatif, ... (never overwrites)
+autoshorts channels list                 # name, format and topics left per channel
+autoshorts --config channels/reddit/config.yaml make     # one video for one channel
+autoshorts run-all                       # one video for EVERY channel
+autoshorts run-all --only reddit whatif -n 2
+```
+
+- **Set the channel name** shown on the story card: `channel.name` in `channels/<name>/config.yaml`.
+- **Topics:** each channel has its own `topics.txt` (40 to start). With `topics.when_empty: llm`
+  (set in the presets) the AI invents new topics when the list is used up.
+- **An AI script writer is required** for `mystery` and `psychology`, and for more than a handful
+  of `reddit`/`whatif` videos: put a free `LLM_API_KEY` (Groq) in the main `.env`.
+- **Shared vs per channel:** API keys in the main `.env`, plus `assets/` and `cache/`, are shared.
+  Each channel has its own `output/`, `state/`, `secrets/` (its YouTube login) and an optional
+  `.env` for its TikTok account's tokens.
+- **Gameplay for the reddit channel:** record your own gameplay (for example 10-20 minutes of
+  Minecraft parkour with the Xbox Game Bar, `Win+G`) and put the files in `assets/gameplay/`. Every
+  video starts at a random point in a random clip. Do **not** download other people's gameplay:
+  it is their content and gets videos claimed or demonetised. Without gameplay the channel falls
+  back to normal stock-footage cuts.
+- **Why the stories are invented:** reading real Reddit posts reuses other people's writing,
+  which Reddit's terms don't allow for commercial use and which YouTube/TikTok treat as
+  reused content (not monetisable). The descriptions say the story is fictional.
+
+**Every day, automatically (Windows):**
+
+```powershell
+powershell -ExecutionPolicy Bypass -File deploy\windows\schedule.ps1 -AllChannels             # 18:00, no upload
+powershell -ExecutionPolicy Bypass -File deploy\windows\schedule.ps1 -AllChannels -At 17:30 -Upload tiktok
+```
+
+**Uploading to several channels:**
+
+- *YouTube:* one Google Cloud OAuth client (`secrets/client_secret.json` in the main folder) serves
+  every channel. Log each channel in once with
+  `autoshorts --config channels/<name>/config.yaml auth youtube` and pick that channel (or its
+  Brand Account) on Google's consent screen. Until the API project passes YouTube's audit,
+  API uploads stay locked private (see [YouTube upload setup](#youtube-upload-setup)), so
+  until then upload by hand: YouTube Studio can schedule a week of videos in one sitting.
+- *TikTok:* each channel is a separate TikTok account. Put that account's `TIKTOK_*` tokens in
+  `channels/<name>/.env` (run `python ../../deploy/tiktok_token.py` from inside that folder).
+  With `mode: inbox` the video arrives as a draft in the TikTok app, and you tap Post.
 
 ## Getting free API keys
 

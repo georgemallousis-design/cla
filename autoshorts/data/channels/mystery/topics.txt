@@ -1,0 +1,41 @@
+# One topic per line. Used topics are remembered in state/used_topics.json.
+The Mary Celeste ghost ship
+The Voynich manuscript
+The Dancing Plague of 1518
+The lost colony of Roanoke
+The Antikythera mechanism
+The Tunguska event
+The Wow! signal
+The Dyatlov Pass incident
+The Baghdad battery
+The Nazca lines
+The Bermuda Triangle and what really happens there
+The Taos Hum
+The disappearance of Amelia Earhart
+The Phaistos disc
+The Green Children of Woolpit
+The Lost City of Atlantis myth
+The Oak Island money pit
+The Piri Reis map
+The Sea Peoples who vanished from history
+The Indus script nobody can read
+The sailing stones of Death Valley
+The Bloop sound from the ocean
+The Flannan Isles lighthouse keepers
+The Carnac stones
+The Lost Library of Alexandria
+The Kensington Runestone
+The Great Emu War
+The Rongorongo script of Easter Island
+The Hessdalen lights
+The Franklin Expedition
+The Codex Gigas
+The Shroud of Turin and what science says
+The Ourang Medan ghost ship legend
+The Eilean Mor mystery
+The Lost Dutchman's Gold Mine
+The Somerton Man case
+The disappearance of the Ninth Legion
+The Gobekli Tepe temple
+The Mothman legend
+The Max Headroom broadcast intrusion

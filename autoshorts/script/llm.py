@@ -135,7 +135,7 @@ class LLMGenerator(ScriptGenerator):
                 messages = [
                     *messages,
                     {"role": "assistant", "content": reply[:3000]},
-                    {"role": "user", "content": prompts.repair_prompt(self.cfg, last_error)},
+                    {"role": "user", "content": prompts.repair_prompt(self.cfg, last_error, fmt)},
                 ]
         raise AutoShortsError(
             f"{self.name} did not produce a usable script after {MAX_ATTEMPTS} attempts "

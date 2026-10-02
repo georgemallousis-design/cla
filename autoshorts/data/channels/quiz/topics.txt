@@ -1,0 +1,41 @@
+# One topic per line. Used topics are remembered in state/used_topics.json.
+Geography capitals
+Space and planets
+Animal kingdom
+Human body
+World flags
+Famous inventions
+Ancient history
+Ocean life
+Science basics
+Food from around the world
+Famous landmarks
+Dinosaurs
+Weather and climate
+Languages of the world
+Olympic sports
+Musical instruments
+Mountains and volcanoes
+Rivers and lakes
+Insects
+Birds
+Chemistry elements
+Math puzzles
+Riddles
+Mythology
+Deserts
+Islands
+Trees and plants
+Records in nature
+Inventors
+The Solar System
+Cars and engines
+Fruits
+Rainforests
+Space missions
+Bones and muscles
+Gemstones
+Board games
+Famous paintings
+World currencies
+The Moon

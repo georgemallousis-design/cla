@@ -33,6 +33,13 @@
 .PARAMETER Upload
     Platforms to upload to, e.g. youtube or youtube,tiktok. Default "none": only render.
 
+.PARAMETER AllChannels
+    Run "autoshorts run-all -n <Count>" instead: one video per channel in .\channels
+    (create them with "autoshorts channels init"). Default time with this switch: 18:00.
+
+        powershell -ExecutionPolicy Bypass -File deploy\windows\schedule.ps1 -AllChannels
+        powershell -ExecutionPolicy Bypass -File deploy\windows\schedule.ps1 -AllChannels -At 17:30 -Upload tiktok
+
 .PARAMETER WhenLoggedOff
     Also run while you are signed out (S4U logon, no password stored). Needs an
     elevated (Run as administrator) PowerShell. By default the task runs only while
@@ -49,6 +56,7 @@ param(
     [string[]]$At = @("08:00", "14:00", "20:00"),
     [ValidateRange(1, 50)][int]$Count = 1,
     [string[]]$Upload = @("none"),
+    [switch]$AllChannels,
     [switch]$WhenLoggedOff,
     [string]$TaskName = "autoshorts",
     [switch]$Remove
@@ -87,7 +95,13 @@ if (-not $Upload -or $Upload -eq "none") {
 
 # Task Scheduler does not keep console output, so autoshorts.exe runs through cmd.exe,
 # which appends its output to a log file. cmd /c strips the outer pair of quotes.
-$command = "`"$exe`" batch -n $Count $uploadArgs >> `"$logFile`" 2>&1"
+if ($AllChannels) {
+    $subcommand = "run-all -n $Count"
+    if (-not $PSBoundParameters.ContainsKey("At")) { $At = @("18:00") }
+} else {
+    $subcommand = "batch -n $Count"
+}
+$command = "`"$exe`" $subcommand $uploadArgs >> `"$logFile`" 2>&1"
 # A task that starts cmd.exe directly opens a console window on the desktop for the
 # whole run, and closing it kills a render or upload half-way. A tiny WSH launcher
 # starts cmd.exe hidden (window style 0), waits for it and returns its exit code.
@@ -124,7 +138,7 @@ $settings = New-ScheduledTaskSettingsSet `
     -DontStopIfGoingOnBatteries `
     -RunOnlyIfNetworkAvailable `
     -MultipleInstances IgnoreNew `
-    -ExecutionTimeLimit (New-TimeSpan -Minutes ([math]::Max(120, 15 * $Count)))
+    -ExecutionTimeLimit (New-TimeSpan -Minutes ([math]::Max(120, (15 * $Count) * $(if ($AllChannels) { 6 } else { 1 }))))
 
 $user = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
 if ($WhenLoggedOff) {
@@ -134,12 +148,12 @@ if ($WhenLoggedOff) {
 }
 
 Register-ScheduledTask -TaskName $TaskName `
-    -Description "autoshorts: make $Count short video(s) per run ($uploadArgs). Log: $logFile" `
+    -Description "autoshorts: $subcommand $uploadArgs. Log: $logFile" `
     -Action $action -Trigger $triggers -Settings $settings -Principal $principal -Force | Out-Null
 
 $when = $times -join ", "
 Write-Host "Scheduled task '$TaskName' registered: daily at $when, running as $user." -ForegroundColor Green
-Write-Host "  command: autoshorts batch -n $Count $uploadArgs (hidden window, via $launcher)"
+Write-Host "  command: autoshorts $subcommand $uploadArgs (hidden window, via $launcher)"
 if ($uploadArgs -eq "--no-upload") {
     Write-Host "  videos are only made, not uploaded; once your YouTube API project is audited, run this again with -Upload youtube"
 }
