@@ -100,7 +100,9 @@ visuals:
   cache_dir: cache/clips                # downloaded and generated clips are reused from here
   max_shot_seconds: 4.0                 # long segments are split into several shots
   style: cuts                           # cuts | continuous (one gameplay clip behind the whole video)
-  gameplay_dir: assets/gameplay         # clips for style continuous, e.g. your own Minecraft parkour recording
+                                        # | split (topic footage on top, gameplay below, captions on the seam)
+  gameplay_dir: assets/gameplay         # clips for continuous/split, e.g. your own Minecraft parkour recording
+  split_ratio: 0.5                      # split: share of the height for the top footage
   timeout: 60                           # seconds per stock-site request/download
 
 # --------------------------------------------------------------------------- captions

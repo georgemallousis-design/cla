@@ -20,6 +20,7 @@ The ``*_filter`` / ``build_*`` helpers are pure functions so the graphs are unit
 """
 from __future__ import annotations
 
+import copy
 import os
 import random
 import shutil
@@ -448,6 +449,44 @@ def concat_shots(files: Sequence[Path], out_path: Path, timeout: float | None = 
     return out_path
 
 
+def split_heights(height: int, ratio: float) -> tuple[int, int]:
+    """Top/bottom heights for a split screen; both even (yuv420p) and at least 2 px."""
+    top = int(round(height * min(max(ratio, 0.1), 0.9) / 2)) * 2
+    top = min(max(top, 2), height - 2)
+    return top, height - top
+
+
+def _layer(cfg: Config, shots: Sequence[Shot], total: float, work: Path, name: str, height: int) -> Path:
+    """Render one layer (all of ``shots``) at the full width and ``height`` into work/<name>.mp4."""
+    layer_cfg = copy.deepcopy(cfg)
+    layer_cfg.video.height = height
+    folder = ensure_dir(work / name)
+    plan = shot_frames(shots, total, int(round(cfg.video.fps)))
+    return concat_shots(render_shots(layer_cfg, plan, folder), folder / f"{name}.mp4", timeout=shot_timeout(total))
+
+
+def render_background(cfg: Config, shots: Sequence[Shot], total: float, work: Path) -> Path:
+    """work/background.mp4: the shots tiled over [0, total]; a split screen when the planner
+    gave "top" and "bottom" shots (topic footage above, gameplay below)."""
+    top = [s for s in shots if getattr(s, "region", "full") == "top"]
+    bottom = [s for s in shots if getattr(s, "region", "full") == "bottom"]
+    out = work / "background.mp4"
+    if not (top and bottom):
+        plan = shot_frames(shots, total, int(round(cfg.video.fps)))
+        return concat_shots(render_shots(cfg, plan, work), out, timeout=shot_timeout(total))
+    top_h, bottom_h = split_heights(int(cfg.video.height), cfg.visuals.split_ratio)
+    log.info("split screen: %d px topic footage over %d px gameplay", top_h, bottom_h)
+    upper = _layer(cfg, top, total, work, "top", top_h)
+    lower = _layer(cfg, bottom, total, work, "bottom", bottom_h)
+    fps = int(round(cfg.video.fps))
+    run_ffmpeg(
+        ["-i", upper, "-i", lower, "-filter_complex", "[0:v][1:v]vstack=inputs=2,setsar=1,format=yuv420p[v]",
+         "-map", "[v]", "-frames:v", str(max(1, round(total * fps))), *_shot_encode_args(fps), out],
+        desc="split screen", timeout=shot_timeout(total),
+    )
+    return out
+
+
 def _stage_subtitles(ass_path: str | Path | None, workdir: Path) -> str | None:
     """Put the captions into the workdir under a bare name the subtitles filter can use."""
     if ass_path is None:
@@ -518,9 +557,7 @@ def render_video(
     own_work = workdir is None
     work = Path(tempfile.mkdtemp(prefix="autoshorts-render-")) if own_work else ensure_dir(workdir)
     try:
-        plan = shot_frames(shots, total, int(round(cfg.video.fps)))
-        background = concat_shots(render_shots(cfg, plan, work), work / "background.mp4",
-                                  timeout=shot_timeout(total))
+        background = render_background(cfg, shots, total, work)
         ass_name = _stage_subtitles(ass_path, work)
         fonts = _stage_fonts(cfg, work) if ass_name else None
 

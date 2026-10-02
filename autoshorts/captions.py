@@ -436,6 +436,13 @@ def _header(cfg: Config, lay: _Layout, title: str) -> list[str]:
     ]
 
 
+def caption_y(cfg: Config) -> float:
+    """Vertical caption centre: on the seam for a split screen, else captions.position."""
+    if (cfg.visuals.style or "").strip().lower() == "split":
+        return min(max(cfg.visuals.split_ratio, 0.1), 0.9)
+    return cfg.captions.position
+
+
 def _dialogue(layer: int, start_cs: int, end_cs: int, style: str, text: str) -> str:
     return f"Dialogue: {layer},{ass_time(start_cs / 100)},{ass_time(end_cs / 100)},{style},,0,0,0,,{text}"
 
@@ -488,7 +495,7 @@ def _caption_events(cfg: Config, lay: _Layout, cap: Caption) -> list[str]:
     lines = wrap_words(texts, lay.font_size, max_w)
     size = fit_font_size([" ".join(texts[i] for i in line) for line in lines], lay.font_size, max_w)
     font_tag = f"\\fs{size}" if size != lay.font_size else ""  # too long even on two lines: shrink
-    pos = f"\\pos({round(lay.width / 2)},{round(cc.position * lay.height)})"
+    pos = f"\\pos({round(lay.width / 2)},{round(caption_y(cfg) * lay.height)})"
     hl, base = inline_color(cc.highlight_color), inline_color(cc.primary_color)
 
     # one event per word: [word start, next word start), the first from the caption start

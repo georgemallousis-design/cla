@@ -102,8 +102,10 @@ class VisualsConfig:
     # cuts: a new stock/local shot every few seconds.
     # continuous: one long clip from gameplay_dir (e.g. Minecraft parkour) behind the
     #             whole video, starting at a random point; falls back to cuts if empty.
+    # split: cuts on top, gameplay underneath, captions on the seam (falls back to cuts).
     style: str = "cuts"
     gameplay_dir: str = "assets/gameplay"
+    split_ratio: float = 0.5  # split: share of the height used by the top (topic) footage
     timeout: int = 60
 
 

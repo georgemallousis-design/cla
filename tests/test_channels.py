@@ -207,3 +207,55 @@ def test_channel_env_wins_over_shared_env(tmp_path, monkeypatch):
     (ch / ".env").write_text("AS_TEST_KEY=channel\n", encoding="utf-8")
     load_config(ch / "config.yaml")
     assert Config.secret("AS_TEST_KEY") == "channel" and Config.secret("AS_TEST_SHARED") == "yes"
+
+
+# --------------------------------------------------------------------------- split screen
+
+
+def test_split_heights_are_even():
+    from autoshorts.render import split_heights
+
+    assert split_heights(1920, 0.5) == (960, 960)
+    top, bottom = split_heights(1920, 0.45)
+    assert top % 2 == 0 and bottom % 2 == 0 and top + bottom == 1920
+    assert split_heights(192, 0.0)[0] >= 2
+
+
+def test_split_plan_has_top_cuts_and_bottom_gameplay(tmp_path, gameplay):
+    cfg = Config(base_dir=tmp_path)
+    cfg.visuals.style = "split"
+    cfg.visuals.providers = ["generated"]
+    cfg.video.width, cfg.video.height = 108, 192
+    narration, _ = _narration(tmp_path)
+    shots = plan_shots(cfg, narration, tmp_path / "work")
+    regions = {s.region for s in shots}
+    assert regions == {"top", "bottom"}
+    assert [s.clip.path.name for s in shots if s.region == "bottom"] == ["parkour.mp4"]
+    assert captions.caption_y(cfg) == 0.5
+
+
+def test_split_without_gameplay_is_full_frame(tmp_path):
+    cfg = Config(base_dir=tmp_path)
+    cfg.visuals.style = "split"
+    cfg.visuals.providers = ["generated"]
+    cfg.video.width, cfg.video.height = 108, 192
+    shots = plan_shots(cfg, _narration(tmp_path)[0], tmp_path / "work")
+    assert {s.region for s in shots} == {"full"}
+
+
+def test_render_background_stacks_layers(tmp_path, gameplay):
+    from autoshorts.render import render_background
+
+    cfg = Config(base_dir=tmp_path)
+    cfg.visuals.style = "split"
+    cfg.visuals.providers = ["generated"]
+    cfg.video.width, cfg.video.height, cfg.video.fps = 108, 192, 10
+    narration, _ = _narration(tmp_path)
+    shots = plan_shots(cfg, narration, tmp_path / "work")
+    work = tmp_path / "render"
+    work.mkdir()
+    out = render_background(cfg, shots, 4.6, work)
+    info = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-count_frames", "-show_entries",
+                           "stream=width,height,nb_read_frames", "-of", "csv=p=0", str(out)],
+                          capture_output=True, text=True, check=True).stdout.strip()
+    assert info == "108,192,46"

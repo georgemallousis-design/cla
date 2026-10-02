@@ -369,10 +369,14 @@ upload logins. Five ready-made channel presets are included:
 | Preset | Format | What the videos are |
 |---|---|---|
 | `reddit` | `reddit` | Original, AI-written stories in the style of popular Reddit posts ("Am I wrong for..."), told over **your own gameplay footage**, with a post-style title card, a male or female voice to match the narrator and 2-word captions |
-| `whatif` | `whatif` | "What would happen if..." science scenarios over stock footage |
+| `whatif` | `whatif` | "What would happen if..." science scenarios |
 | `mystery` | `mystery` | Real, well-documented historical mysteries |
 | `psychology` | `psychology` | Everyday psychology effects ("the spotlight effect") |
 | `quiz` | `quiz` | Trivia quizzes with a pause before each answer |
+
+`whatif`, `mystery`, `psychology` and `quiz` use a **split screen** (`visuals.style: split`):
+footage about the topic on the top half, your gameplay from `assets/gameplay/` on the bottom half,
+and the captions on the seam. Without gameplay clips they fall back to full-screen footage.
 
 ```powershell
 autoshorts channels init                 # creates channels\reddit, channels\whatif, ... (never overwrites)

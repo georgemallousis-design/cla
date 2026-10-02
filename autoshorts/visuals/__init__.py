@@ -27,7 +27,7 @@ import os
 import random
 import re
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from ..config import Config
@@ -70,6 +70,7 @@ class Shot:
     clip: ClipAsset
     start: float  # position in the final video, seconds
     end: float
+    region: str = "full"  # full | top | bottom (visuals.style split)
 
 
 class VisualProvider(ABC):
@@ -359,14 +360,13 @@ def plan_shots(cfg: Config, narration: Narration, workdir: Path, *, topic: str =
     duration = float(narration.duration)
     if duration <= 0:
         raise AutoShortsError("cannot plan visuals for a narration with no duration")
-    style = (cfg.visuals.style or "cuts").strip().lower()
-    if style == "continuous":
-        shots = continuous_shots(cfg, duration)
-        if shots:
-            _write_plan(workdir, shots)
-            return shots
-    elif style != "cuts":
-        raise AutoShortsError(f"unknown visuals.style '{cfg.visuals.style}'; use 'cuts' or 'continuous'")
+    style = visual_style(cfg)
+    gameplay: list[Shot] = []
+    if style in ("continuous", "split"):
+        gameplay = continuous_shots(cfg, duration)
+        if gameplay and style == "continuous":
+            _write_plan(workdir, gameplay)
+            return gameplay
     windows = segment_windows(narration)
     max_shot = float(cfg.visuals.max_shot_seconds or 0)
 
@@ -389,10 +389,22 @@ def plan_shots(cfg: Config, narration: Narration, workdir: Path, *, topic: str =
             previous = clip if clip is not None else previous
 
     shots = _fill_missing(planned, planner)
+    if style == "split" and gameplay:
+        shots = [*(replace(s, region="top") for s in shots), *(replace(s, region="bottom") for s in gameplay)]
     _write_plan(workdir, shots)
     sources = sorted({s.clip.source or "?" for s in shots})
     log.info("visuals: %d shots over %.1fs from %s", len(shots), duration, ", ".join(sources))
     return shots
+
+
+VISUAL_STYLES = ("cuts", "continuous", "split")
+
+
+def visual_style(cfg: Config) -> str:
+    style = (cfg.visuals.style or "cuts").strip().lower()
+    if style not in VISUAL_STYLES:
+        raise AutoShortsError(f"unknown visuals.style '{cfg.visuals.style}'; use one of: {', '.join(VISUAL_STYLES)}")
+    return style
 
 
 def continuous_shots(cfg: Config, duration: float, rng: random.Random | None = None) -> list[Shot]:
