@@ -23,6 +23,7 @@ No paid subscription is required.
 - [Monetisation - read this first](#monetisation---read-this-first)
 - [Install](#install) ([Windows](#windows-10--11) / [macOS](#macos) / [Linux](#linux-ubuntu--debian))
 - [Quickstart](#quickstart)
+- [Dashboard (UI)](#dashboard-ui)
 - [Everyday use](#everyday-use)
 - [Several channels (Reddit stories, What if, ...)](#several-channels)
 - [Getting free API keys](#getting-free-api-keys)
@@ -308,6 +309,29 @@ rather than a random quiz.
 
 The first video takes a few minutes on a typical laptop. Watch it, read `youtube.txt` and
 `tiktok.txt` in the job folder, then tune `config.yaml`.
+
+## Dashboard (UI)
+
+```powershell
+autoshorts ui            # opens http://127.0.0.1:8765 in your browser
+```
+
+On Windows you can also double-click **`Start autoshorts.bat`** in the main folder.
+
+The dashboard runs only on your computer (127.0.0.1) and lets you:
+
+- see every channel's videos, play them, and copy the YouTube title, description and tags
+  or the TikTok caption with one click
+- make a new video (pick a topic and format) or one video for every channel, and watch the
+  progress live
+- upload a finished video to YouTube or TikTok, or delete it
+- edit each channel's settings (voice, format, background style, caption size and colours,
+  music...) and its topics list
+- set the free API keys (stored in `.env`)
+- on Windows, switch the daily automatic run on or off
+
+Settings saved from the dashboard rewrite `config.yaml` without its comments; the previous
+version is kept as `config.yaml.bak`.
 
 ## Everyday use
 

@@ -743,6 +743,14 @@ def cmd_run_all(args: argparse.Namespace) -> int:
     return EXIT_ERROR if all(code not in (EXIT_OK, EXIT_PARTIAL) for code in results.values()) else EXIT_PARTIAL
 
 
+def cmd_ui(args: argparse.Namespace) -> int:
+    _setup_logging("DEBUG" if getattr(args, "verbose", False) else "WARNING")
+    from .ui.server import serve
+
+    serve(Path.cwd(), port=args.port, open_browser=not args.no_browser)
+    return EXIT_OK
+
+
 # --------------------------------------------------------------------------- parser
 
 
@@ -848,6 +856,12 @@ def build_parser() -> argparse.ArgumentParser:
                    help="videos per channel (default: 1)")
     p.add_argument("--only", nargs="+", metavar="CHANNEL", help="only these channels")
     _add_upload_options(p)
+
+    p = add("ui", cmd_ui, "open the dashboard in your browser (videos, settings, topics, keys)", examples=(
+        "  autoshorts ui\n"
+        "  autoshorts ui --port 8766 --no-browser\n"))
+    p.add_argument("--port", type=int, default=8765, help="port on 127.0.0.1 (default: 8765)")
+    p.add_argument("--no-browser", action="store_true", help="do not open the browser")
 
     p = add("voices", cmd_voices, "list edge-tts voices (needs internet)")
     p.add_argument("--lang", "-l", default=None, help="language/locale prefix, e.g. en, en-GB, es; 'all' for every voice "

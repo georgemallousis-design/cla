@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>autoshorts</title>
+<style>
+:root {
+  --bg: #0f1115; --panel: #171a21; --panel2: #1e222b; --line: #2a2f3a; --text: #e8eaf0; --muted: #9aa3b2;
+  --accent: #ff4d6d; --accent2: #ffb703; --ok: #3ddc97; --warn: #ffb703; --fail: #ff5c5c; --radius: 12px;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+a { color: var(--accent2); }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { background: var(--accent); border: 0; color: #fff; padding: 9px 16px; border-radius: 9px; cursor: pointer; font-weight: 600; }
+button.secondary { background: var(--panel2); border: 1px solid var(--line); color: var(--text); font-weight: 500; }
+button.danger { background: transparent; border: 1px solid var(--fail); color: var(--fail); }
+button:disabled { opacity: .5; cursor: default; }
+input[type=text], input[type=number], input[type=password], select, textarea {
+  background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%; }
+textarea { min-height: 360px; font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+.app { display: grid; grid-template-columns: 250px 1fr; min-height: 100vh; }
+nav { background: var(--panel); border-right: 1px solid var(--line); padding: 18px 12px; display: flex; flex-direction: column; gap: 4px; }
+.brand { font-weight: 800; font-size: 20px; padding: 4px 10px 16px; letter-spacing: -.3px; }
+.brand span { color: var(--accent); }
+.nav-item { padding: 9px 12px; border-radius: 9px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; color: var(--muted); }
+.nav-item:hover { background: var(--panel2); color: var(--text); }
+.nav-item.active { background: var(--panel2); color: var(--text); font-weight: 600; }
+.nav-label { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding: 16px 12px 6px; }
+.count { font-size: 12px; background: var(--bg); border-radius: 20px; padding: 1px 8px; color: var(--muted); }
+main { padding: 26px 32px 160px; max-width: 1200px; width: 100%; }
+h1 { margin: 0 0 4px; font-size: 26px; letter-spacing: -.4px; }
+.sub { color: var(--muted); margin-bottom: 22px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; margin-bottom: 16px; }
+.card h3 { margin: 0 0 12px; font-size: 16px; }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.check { display: flex; gap: 10px; align-items: flex-start; padding: 10px; border-radius: 10px; background: var(--panel2); }
+.dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; flex: none; }
+.dot.ok { background: var(--ok); } .dot.warn { background: var(--warn); } .dot.fail { background: var(--fail); }
+.tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
+.tab { padding: 10px 14px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; }
+.tab.active { color: var(--text); border-color: var(--accent); font-weight: 600; }
+.videos { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; }
+.vcard { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; cursor: pointer; transition: transform .1s; }
+.vcard:hover { transform: translateY(-2px); border-color: var(--muted); }
+.thumb { aspect-ratio: 9/16; background: #000 center/cover no-repeat; position: relative; }
+.badge { position: absolute; top: 8px; left: 8px; font-size: 11px; padding: 2px 8px; border-radius: 20px; background: rgba(0,0,0,.7); }
+.badge.failed { background: var(--fail); } .badge.done { background: rgba(61,220,151,.85); color: #000; }
+.vcard .meta { padding: 9px 10px; font-size: 13px; }
+.vcard .meta b { display: block; font-weight: 600; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.muted { color: var(--muted); font-size: 13px; }
+.field { display: grid; grid-template-columns: 260px 1fr; gap: 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.field:last-child { border: 0; }
+.field input[type=color] { width: 60px; height: 34px; background: none; border: 1px solid var(--line); border-radius: 6px; padding: 2px; }
+.switch { width: 20px; height: 20px; }
+.modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.75); display: none; align-items: center; justify-content: center; z-index: 10; padding: 20px; }
+.modal-bg.open { display: flex; }
+.modal { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; max-width: 980px; width: 100%; max-height: 92vh; overflow: auto; display: grid; grid-template-columns: 330px 1fr; gap: 20px; padding: 20px; }
+.modal video { width: 100%; border-radius: 10px; background: #000; aspect-ratio: 9/16; }
+.copybox { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px; white-space: pre-wrap; font-size: 13px; max-height: 180px; overflow: auto; margin: 6px 0 4px; }
+.label { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-top: 12px; display: flex; justify-content: space-between; align-items: center; }
+.label button { padding: 3px 10px; font-size: 12px; }
+.log { position: fixed; left: 250px; right: 0; bottom: 0; background: #0a0c10; border-top: 1px solid var(--line); z-index: 5; display: none; }
+.log.open { display: block; }
+.log-head { display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; font-size: 13px; }
+.log pre { margin: 0; padding: 0 16px 12px; height: 170px; overflow: auto; font-size: 12px; color: #b9c2d0; }
+.spinner { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--accent2); margin-right: 8px; animation: pulse 1s infinite; }
+@keyframes pulse { 50% { opacity: .3; } }
+.toast { position: fixed; top: 16px; right: 16px; background: var(--panel2); border: 1px solid var(--line); padding: 10px 16px; border-radius: 10px; z-index: 20; display: none; }
+.empty { text-align: center; padding: 40px; color: var(--muted); }
+@media (max-width: 800px) {
+  .app { grid-template-columns: 1fr; } nav { flex-direction: row; overflow-x: auto; }
+  .log { left: 0; } .modal { grid-template-columns: 1fr; } .field { grid-template-columns: 1fr; } main { padding: 18px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav id="nav"></nav>
+  <main id="main"><div class="empty">Φόρτωση…</div></main>
+</div>
+
+<div class="log" id="log">
+  <div class="log-head"><span id="log-title"></span>
+    <span class="row"><button class="secondary" id="log-stop">Διακοπή</button><button class="secondary" id="log-close">Κλείσιμο</button></span></div>
+  <pre id="log-pre"></pre>
+</div>
+<div class="modal-bg" id="modal"><div class="modal" id="modal-body"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+const FORMAT_NAMES = {random: "Τυχαίο", facts: "Facts", story: "Ιστορία", quiz: "Quiz", motivation: "Motivation",
+  explainer: "Εξήγηση", reddit: "Reddit ιστορίες", whatif: "What if", mystery: "Μυστήρια", psychology: "Ψυχολογία"};
+const STYLE_NAMES = {cuts: "πλάνα", continuous: "gameplay", split: "split-screen"};
+const VOICES = ["en-US-AndrewNeural", "en-US-AvaNeural", "en-US-BrianNeural", "en-US-EmmaNeural", "en-US-GuyNeural",
+  "en-US-JennyNeural", "en-US-AriaNeural", "en-US-ChristopherNeural", "en-GB-RyanNeural", "en-GB-SoniaNeural",
+  "el-GR-NestorasNeural", "el-GR-AthinaNeural"];
+let state = { view: "home", channel: null, tab: "videos", channels: [], logSince: 0, polling: false };
+
+async function api(path, body) {
+  const opt = body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json", "X-Autoshorts": "1" }, body: JSON.stringify(body) };
+  const r = await fetch("/api/" + path, opt);
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || r.statusText);
+  return data;
+}
+function toast(msg, ms = 2500) { const t = $("#toast"); t.textContent = msg; t.style.display = "block"; clearTimeout(t._h); t._h = setTimeout(() => t.style.display = "none", ms); }
+function copy(text) { navigator.clipboard.writeText(text).then(() => toast("Αντιγράφηκε ✓")); }
+function fmtDur(s) { s = Math.round(s || 0); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; }
+
+async function loadChannels() { state.channels = await api("channels"); renderNav(); }
+
+function renderNav() {
+  const item = (view, label, extra = "", ch = null) => {
+    const active = state.view === view && (ch === null || ch === state.channel) ? " active" : "";
+    return `<div class="nav-item${active}" data-view="${view}" data-ch="${esc(ch ?? "")}"><span>${label}</span>${extra}</div>`;
+  };
+  $("#nav").innerHTML = `<div class="brand">auto<span>shorts</span></div>` +
+    item("home", "🏠 Αρχική") + item("keys", "🔑 Κλειδιά") +
+    `<div class="nav-label">Κανάλια</div>` +
+    state.channels.map(c => item("channel", esc(c.name), `<span class="count">${c.videos ?? "!"}</span>`, c.id)).join("") +
+    (state.channels.some(c => c.id !== "_main") ? "" : `<div class="nav-item" data-view="init"><span>➕ Φτιάξε τα 5 κανάλια</span></div>`);
+  document.querySelectorAll(".nav-item").forEach(el => el.onclick = () => {
+    if (el.dataset.view === "init") return initChannels();
+    state.view = el.dataset.view; state.channel = el.dataset.ch || null; state.tab = "videos"; render();
+  });
+}
+
+async function initChannels() {
+  if (!confirm("Να φτιαχτούν τα 5 έτοιμα κανάλια (Reddit, What if, Μυστήρια, Ψυχολογία, Quiz);")) return;
+  await api("channels-init", { names: [] }); toast("Έτοιμα τα κανάλια"); await loadChannels(); render();
+}
+
+async function render() {
+  renderNav();
+  const main = $("#main");
+  try {
+    if (state.view === "home") return await renderHome(main);
+    if (state.view === "keys") return await renderKeys(main);
+    if (state.view === "channel") return await renderChannel(main);
+  } catch (e) { main.innerHTML = `<div class="card">Σφάλμα: ${esc(e.message)}</div>`; }
+}
+
+function uploadChecks(prefix) {
+  return `<label class="row"><input type="checkbox" id="${prefix}-yt"> YouTube</label>
+          <label class="row"><input type="checkbox" id="${prefix}-tt"> TikTok</label>`;
+}
+function uploadValue(prefix) { return [$(`#${prefix}-yt`)?.checked && "youtube", $(`#${prefix}-tt`)?.checked && "tiktok"].filter(Boolean); }
+
+async function renderHome(main) {
+  const st = await api("status");
+  const total = state.channels.reduce((a, c) => a + (c.videos || 0), 0);
+  main.innerHTML = `
+    <h1>Αρχική</h1><div class="sub">${total} βίντεο σε ${state.channels.length} κανάλι(α) · ${esc(st.root)}</div>
+    <div class="card"><h3>Κατάσταση</h3><div class="grid2">
+      ${st.checks.map(c => `<div class="check"><span class="dot ${c.level}"></span><div><b>${esc(c.name)}</b><div class="muted">${esc(c.detail)}</div></div></div>`).join("")}
+    </div></div>
+    <div class="card"><h3>Φτιάξε βίντεο για όλα τα κανάλια</h3>
+      <div class="row"><span>Βίντεο ανά κανάλι</span><input type="number" id="ra-n" value="1" min="1" max="10" style="width:80px">
+        <span class="muted">Ανέβασμα:</span>${uploadChecks("ra")}
+        <button id="ra-go">▶ Ξεκίνα</button></div></div>
+    <div class="card"><h3>Κανάλια</h3><div class="grid2">
+      ${state.channels.map(c => `<div class="check" style="cursor:pointer" data-ch="${esc(c.id)}"><div>
+        <b>${esc(c.name)}</b><div class="muted">${c.error ? "⚠ " + esc(c.error) : `${esc(FORMAT_NAMES[c.format] || c.format)} · ${esc(STYLE_NAMES[c.style] || c.style)} · ${c.videos} βίντεο · ${c.topics_left} θέματα`}</div></div></div>`).join("")}
+    </div></div>
+    <div class="card"><h3>Αυτόματα κάθε μέρα</h3>
+      ${st.windows ? `<div class="row"><span>Ώρα</span><input type="text" id="sc-at" value="18:00" style="width:90px">
+          <span class="muted">Ανέβασμα:</span>${uploadChecks("sc")}
+          <button id="sc-on">Ενεργοποίηση</button><button class="secondary" id="sc-off">Απενεργοποίηση</button></div>
+          <div class="muted" style="margin-top:8px">Τρέχει όσο ο υπολογιστής είναι ανοιχτός και συνδεδεμένος.</div>`
+        : `<div class="muted">Στο Linux χρησιμοποίησε το systemd timer (deploy/autoshorts.timer). Δες το README.</div>`}
+    </div>`;
+  $("#ra-go").onclick = async () => { try { await api("run-all", { count: +$("#ra-n").value, upload: uploadValue("ra") }); startLog(); } catch (e) { toast(e.message, 4000); } };
+  main.querySelectorAll("[data-ch]").forEach(el => el.onclick = () => { state.view = "channel"; state.channel = el.dataset.ch; render(); });
+  if (st.windows) {
+    const sched = async remove => { try { const r = await api("schedule", { at: $("#sc-at").value, upload: uploadValue("sc"), remove });
+      alert((r.ok ? "✓ " : "✗ ") + r.output); } catch (e) { toast(e.message, 4000); } };
+    $("#sc-on").onclick = () => sched(false); $("#sc-off").onclick = () => sched(true);
+  }
+}
+
+async function renderKeys(main) {
+  const keys = await api("env");
+  main.innerHTML = `<h1>Κλειδιά</h1><div class="sub">Αποθηκεύονται στο .env του φακέλου. Τα κανάλια τα μοιράζονται.</div>
+    <div class="card">${keys.map(k => `<div class="field"><div><b>${esc(k.label)}</b><div class="muted">${esc(k.key)} ${k.link ? `· <a href="${esc(k.link)}" target="_blank">πάρε κλειδί</a>` : ""}</div></div>
+      <div class="row" style="flex-wrap:nowrap"><input type="password" data-key="${esc(k.key)}" placeholder="${k.set ? "ορισμένο: " + esc(k.masked) : "δεν έχει οριστεί"}"></div></div>`).join("")}
+      <div class="row" style="margin-top:14px"><button id="keys-save">Αποθήκευση</button><span class="muted">Κενά πεδία δεν αλλάζουν.</span></div></div>`;
+  $("#keys-save").onclick = async () => {
+    const body = {}; document.querySelectorAll("[data-key]").forEach(i => { if (i.value.trim()) body[i.dataset.key] = i.value.trim(); });
+    const r = await api("env", body); toast(`Αποθηκεύτηκαν: ${r.saved.length}`); render();
+  };
+}
+
+async function renderChannel(main) {
+  const ch = state.channels.find(c => c.id === state.channel);
+  if (!ch) { state.view = "home"; return render(); }
+  const tabs = [["videos", "🎬 Βίντεο"], ["new", "➕ Νέο βίντεο"], ["topics", "📝 Θέματα"], ["settings", "⚙️ Ρυθμίσεις"]];
+  main.innerHTML = `<h1>${esc(ch.name)}</h1><div class="sub">${esc(FORMAT_NAMES[ch.format] || ch.format || "")} · ${esc(STYLE_NAMES[ch.style] || ch.style || "")} · ${ch.topics_left ?? "?"} θέματα έμειναν</div>
+    <div class="tabs">${tabs.map(([k, l]) => `<div class="tab ${state.tab === k ? "active" : ""}" data-tab="${k}">${l}</div>`).join("")}</div><div id="tab"></div>`;
+  main.querySelectorAll(".tab").forEach(t => t.onclick = () => { state.tab = t.dataset.tab; renderChannel(main); });
+  const el = $("#tab");
+  const cid = encodeURIComponent(ch.id);
+  if (state.tab === "videos") {
+    const vids = await api(`channel/${cid}/videos`);
+    if (!vids.length) { el.innerHTML = `<div class="empty">Δεν υπάρχουν βίντεο ακόμα. Πάτα «Νέο βίντεο».</div>`; return; }
+    el.innerHTML = `<div class="videos">${vids.map((v, i) => `<div class="vcard" data-i="${i}">
+      <div class="thumb" style="background-image:url('/media/${cid}/${encodeURIComponent(v.id)}/thumbnail.jpg')"><span class="badge ${esc(v.status)}">${v.status === "done" ? fmtDur(v.duration) : esc(v.status)}</span></div>
+      <div class="meta"><b>${esc(v.title)}</b><span class="muted">${esc((v.created || "").slice(0, 16).replace("T", " "))}</span></div></div>`).join("")}</div>`;
+    el.querySelectorAll(".vcard").forEach(c => c.onclick = () => openVideo(ch, vids[+c.dataset.i]));
+  } else if (state.tab === "new") {
+    el.innerHTML = `<div class="card"><div class="field"><b>Θέμα</b><input type="text" id="mk-topic" placeholder="κενό = το επόμενο από τη λίστα θεμάτων"></div>
+      <div class="field"><b>Είδος</b><select id="mk-format"><option value="">όπως στις ρυθμίσεις (${esc(FORMAT_NAMES[ch.format] || ch.format)})</option>
+        ${Object.entries(FORMAT_NAMES).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join("")}</select></div>
+      <div class="field"><b>Ανέβασμα όταν τελειώσει</b><div class="row">${uploadChecks("mk")}</div></div>
+      <div class="row" style="margin-top:14px"><button id="mk-go">▶ Φτιάξε βίντεο</button><span class="muted">1-3 λεπτά. Βλέπεις την πρόοδο κάτω.</span></div></div>`;
+    $("#mk-go").onclick = async () => {
+      try { await api(`channel/${cid}/make`, { topic: $("#mk-topic").value, format: $("#mk-format").value, upload: uploadValue("mk") }); startLog(); }
+      catch (e) { toast(e.message, 4000); }
+    };
+  } else if (state.tab === "topics") {
+    const t = await api(`channel/${cid}/topics`);
+    el.innerHTML = `<div class="card"><div class="muted" style="margin-bottom:8px">Ένα θέμα ανά γραμμή · ${t.unused.length} δεν έχουν χρησιμοποιηθεί · ${esc(t.file)}</div>
+      <textarea id="tp-text">${esc(t.text)}</textarea><div class="row" style="margin-top:10px"><button id="tp-save">Αποθήκευση</button></div></div>`;
+    $("#tp-save").onclick = async () => { await api(`channel/${cid}/topics`, { text: $("#tp-text").value }); toast("Αποθηκεύτηκε ✓"); loadChannels(); };
+  } else if (state.tab === "settings") {
+    const s = await api(`channel/${cid}/settings`);
+    el.innerHTML = `<div class="card">${s.fields.map((f, i) => `<div class="field"><b>${esc(f.label)}</b><div>${input(f, i)}</div></div>`).join("")}
+      <div class="row" style="margin-top:14px"><button id="st-save">Αποθήκευση</button><span class="muted">Κρατιέται αντίγραφο στο config.yaml.bak</span></div></div>
+      <datalist id="voices">${VOICES.map(v => `<option value="${v}">`).join("")}</datalist>`;
+    $("#st-save").onclick = async () => {
+      const changes = {};
+      s.fields.forEach((f, i) => {
+        const inp = $(`#f${i}`); let v = f.type === "bool" ? inp.checked : inp.value;
+        const old = f.type === "list" ? (f.value || []).join(", ") : f.value;
+        if (String(v) !== String(old)) changes[f.path] = v;
+      });
+      if (!Object.keys(changes).length) return toast("Καμία αλλαγή");
+      try { await api(`channel/${cid}/settings`, { changes }); toast("Αποθηκεύτηκε ✓"); await loadChannels(); render(); } catch (e) { toast(e.message, 5000); }
+    };
+  }
+}
+
+function input(f, i) {
+  const v = f.value;
+  if (f.type === "bool") return `<input type="checkbox" class="switch" id="f${i}" ${v ? "checked" : ""}>`;
+  if (f.type === "select") return `<select id="f${i}">${f.options.map(o => `<option value="${esc(o)}" ${o === v ? "selected" : ""}>${esc(FORMAT_NAMES[o] || STYLE_NAMES[o] || o)}</option>`).join("")}</select>`;
+  if (f.type === "color") return `<input type="color" id="f${i}" value="${esc(v || "#ffffff")}">`;
+  if (f.type === "number") return `<input type="number" step="any" id="f${i}" value="${esc(v)}">`;
+  if (f.type === "list") return `<input type="text" id="f${i}" value="${esc((v || []).join(", "))}">`;
+  if (f.type === "voice") return `<input type="text" id="f${i}" list="voices" value="${esc(v)}">`;
+  return `<input type="text" id="f${i}" value="${esc(v)}">`;
+}
+
+function openVideo(ch, v) {
+  const cid = encodeURIComponent(ch.id), vid = encodeURIComponent(v.id);
+  const yt = v.youtube || {}, tt = v.tiktok || {};
+  const tags = (yt.tags || []).join(", ");
+  const box = (label, text) => text ? `<div class="label">${label}<button class="secondary" data-copy="${esc(text)}">Αντιγραφή</button></div><div class="copybox">${esc(text)}</div>` : "";
+  $("#modal-body").innerHTML = `
+    <div>${v.has_video ? `<video src="/media/${cid}/${vid}/video.mp4" controls autoplay playsinline></video>` : `<div class="empty">Δεν υπάρχει βίντεο</div>`}</div>
+    <div><div class="row" style="justify-content:space-between"><h3 style="margin:0">${esc(v.title)}</h3><button class="secondary" id="m-close">✕</button></div>
+      <div class="muted">${esc(v.status)} · ${fmtDur(v.duration)} · ${esc(v.path)}</div>
+      ${v.error ? `<div class="label">Σφάλμα</div><div class="copybox">${esc(v.error)}</div>` : ""}
+      ${box("YouTube τίτλος", yt.title)}${box("YouTube περιγραφή", yt.description)}${box("YouTube tags", tags)}${box("TikTok λεζάντα", tt.caption)}
+      ${(v.uploads || []).length ? `<div class="label">Ανεβάσματα</div>${v.uploads.map(u => `<div class="muted">${u.ok ? "✓" : "✗"} ${esc(u.platform)} ${u.url ? `<a href="${esc(u.url)}" target="_blank">${esc(u.url)}</a>` : esc(u.error || "")}</div>`).join("")}` : ""}
+      <div class="row" style="margin-top:16px">
+        ${v.has_video ? `<button id="m-yt">Ανέβασμα YouTube</button><button id="m-tt">Ανέβασμα TikTok</button>` : ""}
+        <button class="danger" id="m-del">Διαγραφή</button></div></div>`;
+  $("#modal").classList.add("open");
+  const close = () => { $("#modal").classList.remove("open"); $("#modal-body").innerHTML = ""; };
+  $("#m-close").onclick = close; $("#modal").onclick = e => { if (e.target.id === "modal") close(); };
+  document.querySelectorAll("[data-copy]").forEach(b => b.onclick = () => copy(b.dataset.copy));
+  const up = async p => { try { await api(`channel/${cid}/upload`, { job: v.id, platforms: [p] }); close(); startLog(); } catch (e) { toast(e.message, 4000); } };
+  if (v.has_video) { $("#m-yt").onclick = () => up("youtube"); $("#m-tt").onclick = () => up("tiktok"); }
+  $("#m-del").onclick = async () => { if (!confirm("Διαγραφή αυτού του βίντεο;")) return; await api(`channel/${cid}/delete`, { job: v.id }); close(); toast("Διαγράφηκε"); await loadChannels(); render(); };
+}
+
+function startLog() { state.logSince = 0; $("#log-pre").textContent = ""; $("#log").classList.add("open"); if (!state.polling) pollLog(); }
+async function pollLog() {
+  state.polling = true;
+  try {
+    const r = await api(`run?since=${state.logSince}`);
+    state.logSince = r.next;
+    if (r.lines.length) { const pre = $("#log-pre"); pre.textContent += r.lines.join("\n") + "\n"; pre.scrollTop = pre.scrollHeight; }
+    $("#log-title").innerHTML = r.running ? `<span class="spinner"></span>${esc(r.label)} · ${fmtDur(r.elapsed)}`
+      : `${r.exit_code === 0 ? "✓" : "⚠"} ${esc(r.label)} · τέλος (κωδικός ${r.exit_code})`;
+    $("#log-stop").style.display = r.running ? "" : "none";
+    if (r.running) return setTimeout(pollLog, 1000);
+    state.polling = false; await loadChannels(); render();
+  } catch (e) { state.polling = false; }
+}
+$("#log-close").onclick = () => $("#log").classList.remove("open");
+$("#log-stop").onclick = () => api("stop", {});
+document.addEventListener("keydown", e => { if (e.key === "Escape") $("#modal").click(); });
+
+(async () => {
+  await loadChannels();
+  const r = await api("run");
+  if (r.running) startLog();
+  render();
+})();
+</script>
+</body>
+</html>
